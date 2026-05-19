@@ -59,6 +59,16 @@ npm run bench:parallel -- --oh-my-pi-dir /tmp/oh-my-pi-bench --out /tmp/pi-edit-
 
 It verifies that the upstream docs and hashline implementation are present. Then run oh-my-pi/omp against the same fixture and scenario prompts in `/tmp/pi-edit-parallel/tasks/*/oh_my_pi.prompt.md`, forcing its default hashline edit mode.
 
+## Reporting
+
+After generating or running a parallel benchmark directory:
+
+```bash
+npm run bench:report -- --dir /tmp/pi-edit-parallel --out /tmp/pi-edit-parallel/report.md
+```
+
+This emits both Markdown and JSON summaries.
+
 ## Metrics to compare
 
 Primary:

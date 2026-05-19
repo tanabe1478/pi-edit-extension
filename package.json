@@ -12,6 +12,7 @@
     "bench": "node bench/bench.mjs",
     "bench:plan": "node bench/plan.mjs",
     "bench:parallel": "node bench/parallel-runner.mjs",
+    "bench:report": "node bench/report.mjs",
     "scan:secrets": "gitleaks detect --source . --verbose --redact"
   },
   "keywords": ["pi", "extension", "llm", "edit", "checksum", "benchmark"],

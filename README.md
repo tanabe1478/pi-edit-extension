@@ -193,6 +193,12 @@ Prepare and smoke-check upstream oh-my-pi as well:
 npm run bench:parallel -- --out /tmp/pi-edit-parallel --install --build-native --smoke
 ```
 
+Generate a report from a run directory:
+
+```bash
+npm run bench:report -- --dir /tmp/pi-edit-parallel --out /tmp/pi-edit-parallel/report.md
+```
+
 See `bench/oh-my-pi.md` for the parallel upstream run notes.
 
 Run the same task suite under four modes:
