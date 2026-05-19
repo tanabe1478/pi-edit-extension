@@ -15,11 +15,17 @@ function readMaybe(file) {
 
 function makeFixture(lines) {
   const out = [];
+  out.push("export function fixture(items, input, limit, defaultValue) {");
+  out.push("  let total = 0;");
   for (let i = 1; i <= lines; i++) {
-    if (i % 7 === 0) out.push(`  if (items[${i}].enabled && limit > ${i}) { total += compute(items[${i}], limit); }`);
+    if (i % 17 === 0) out.push("  const repeated = normalize(input.shared ?? defaultValue);");
+    else if (i % 11 === 0) out.push(`  const message_${i} = \`value:\${input.value_${i}} limit:\${limit}\`;`);
+    else if (i % 7 === 0) out.push(`  if (items[${i}].enabled && limit > ${i}) { total += compute(items[${i}], limit); }`);
     else if (i % 5 === 0) out.push(`  const value_${i} = normalize(input.value_${i} ?? defaultValue);`);
     else out.push(`  // filler line ${i} with moderately long context and indentation`);
   }
+  out.push("  return total;");
+  out.push("}");
   return out.join("\n") + "\n";
 }
 
@@ -63,10 +69,18 @@ function scenario(name, text, start, end, newText) {
 export function buildPlan() {
   const fixture = makeFixture(240);
   const scenarios = [
-    scenario("one-line replacement", fixture, 10, 10, "  const value_10 = normalizeFast(input.value_10);"),
-    scenario("small block replacement", fixture, 35, 39, "  total += computeWindow(items, 35, 39, limit);"),
-    scenario("large deletion", fixture, 80, 139, ""),
-    scenario("large replacement", fixture, 150, 220, "  return summarize(items, limit);"),
+    scenario("one-line replacement", fixture, 12, 12, "  const value_10 = normalizeFast(input.value_10);"),
+    scenario("small block replacement", fixture, 37, 41, "  total += computeWindow(items, 35, 39, limit);"),
+    scenario("large deletion", fixture, 82, 141, ""),
+    scenario("large replacement", fixture, 152, 222, "  return summarize(items, limit);"),
+    scenario("multi-line insertion-shaped replacement", fixture, 24, 24, "  const debug_22 = input.value_22 ?? defaultValue;\n  total += Number(debug_22) || 0;"),
+    scenario("template-string replacement", fixture, 35, 35, "  const message_33 = formatMessage(input.value_33, limit);"),
+    scenario("repeated-line exact target", fixture, 19, 19, "  const repeated = normalizeFast(input.shared ?? defaultValue);"),
+    scenario("delete single repeated line", fixture, 36, 36, ""),
+    scenario("replace block ending before repeated", fixture, 48, 53, "  total += computeWindow(items, 46, 51, limit);"),
+    scenario("near eof replacement", fixture, 241, 241, "  return finalize(total, limit);"),
+    scenario("file opener replacement", fixture, 1, 1, "export function fixtureOptimized(items, input, limit, defaultValue) {"),
+    scenario("medium deletion", fixture, 180, 199, ""),
   ];
   return { version: 1, fixture: { path: "fixture.ts", text: fixture }, scenarios };
 }

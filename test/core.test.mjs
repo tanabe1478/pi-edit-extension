@@ -85,3 +85,11 @@ test("hashline recovery applies cached edit across unrelated current changes", (
   assert.equal(res.text, "intro\na\nB\nc\n");
   assert.equal(res.recovered, true);
 });
+
+test("hashline recovery rejects ambiguous current segments", () => {
+  const snapshot = "a\nb\nc\n";
+  const current = "a\nb\nc\na\nb\nc\n";
+  const anchor = formatHashlineAnchor(2, "b");
+  const patch = `@@ file.txt\n= ${anchor}..${anchor}\n~B`;
+  assert.throws(() => recoverHashlinePatchFromSnapshot(snapshot, current, patch), /matched 2 locations/);
+});

@@ -58,10 +58,13 @@ function commandFor(mode, promptFile, args) {
 }
 
 function expectedText(fixture, scenario) {
-  const { oldText, newText } = scenario.payloads.pi_edit.edits[0];
-  const count = fixture.split(oldText).length - 1;
-  if (count !== 1) throw new Error(`Expected oldText once for ${scenario.name}, got ${count}`);
-  return fixture.replace(oldText, newText);
+  const lines = fixture.replace(/\r\n/g, "\n").split("\n");
+  const finalEmpty = lines.at(-1) === "";
+  if (finalEmpty) lines.pop();
+  const repl = scenario.payloads.pi_edit.edits[0].newText;
+  const replacement = repl.length ? repl.replace(/\r\n/g, "\n").split("\n") : [];
+  lines.splice(scenario.start - 1, scenario.end - scenario.start + 1, ...replacement);
+  return lines.join("\n") + (finalEmpty ? "\n" : "");
 }
 
 async function main() {
