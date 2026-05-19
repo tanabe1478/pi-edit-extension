@@ -11,13 +11,15 @@ const DEFAULT_OUT = path.join(ROOT, ".bench-runs", new Date().toISOString().repl
 const DEFAULT_OMP_DIR = path.join(os.tmpdir(), "oh-my-pi-bench");
 
 function parseArgs(argv) {
-  const args = { out: DEFAULT_OUT, ohMyPiDir: process.env.OH_MY_PI_DIR || DEFAULT_OMP_DIR, clone: true, install: false, promptsOnly: false };
+  const args = { out: DEFAULT_OUT, ohMyPiDir: process.env.OH_MY_PI_DIR || DEFAULT_OMP_DIR, clone: true, install: false, buildNative: false, smoke: false, promptsOnly: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") args.out = argv[++i];
     else if (a === "--oh-my-pi-dir") args.ohMyPiDir = argv[++i];
     else if (a === "--no-clone") args.clone = false;
     else if (a === "--install") args.install = true;
+    else if (a === "--build-native") args.buildNative = true;
+    else if (a === "--smoke") args.smoke = true;
     else if (a === "--prompts-only") args.promptsOnly = true;
     else if (a === "--help") args.help = true;
     else throw new Error(`Unknown arg: ${a}`);
@@ -35,7 +37,20 @@ function output(cmd, args, opts = {}) {
   return { ok: res.status === 0, stdout: res.stdout, stderr: res.stderr, status: res.status };
 }
 
-async function ensureOhMyPi(dir, { clone, install }) {
+function step(cmd, args, opts = {}) {
+  const started = Date.now();
+  const res = spawnSync(cmd, args, { stdio: ["ignore", "pipe", "pipe"], encoding: "utf8", ...opts });
+  return {
+    cmd: [cmd, ...args].join(" "),
+    ok: res.status === 0,
+    status: res.status,
+    duration_ms: Date.now() - started,
+    stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"),
+    stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"),
+  };
+}
+
+async function ensureOhMyPi(dir, { clone, install, buildNative, smoke }) {
   if (!fs.existsSync(dir)) {
     if (!clone) return { present: false, reason: "missing and --no-clone set" };
     await fsp.mkdir(path.dirname(dir), { recursive: true });
@@ -47,8 +62,12 @@ async function ensureOhMyPi(dir, { clone, install }) {
   const editDoc = path.join(dir, "docs/tools/edit.md");
   const hashImpl = path.join(dir, "packages/coding-agent/src/hashline/hash.ts");
   const present = fs.existsSync(pkg) && fs.existsSync(cli) && fs.existsSync(editDoc) && fs.existsSync(hashImpl);
-  if (install && present) run("bun", ["install"], { cwd: dir });
-  return { present, dir, head: head.ok ? head.stdout.trim() : null, cli, editDoc, hashImpl };
+  const setup = [];
+  if (install && present) setup.push(step("bun", ["install"], { cwd: dir, timeout: 180_000 }));
+  if (buildNative && present) setup.push(step("bun", ["--cwd=packages/natives", "run", "build"], { cwd: dir, timeout: 300_000 }));
+  if (smoke && present) setup.push(step("bun", ["packages/coding-agent/src/cli.ts", "--version"], { cwd: dir, timeout: 60_000 }));
+  const ready = present && (!smoke || setup.at(-1)?.ok === true);
+  return { present, ready, dir, head: head.ok ? head.stdout.trim() : null, cli, editDoc, hashImpl, setup };
 }
 
 function modePrompt(mode, scenario) {
@@ -89,7 +108,7 @@ function summarizePlan(plan) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log(`Usage: node bench/parallel-runner.mjs [--out DIR] [--oh-my-pi-dir DIR] [--install] [--no-clone] [--prompts-only]\n\nCreates a neutral task plan and prompt corpus for this extension and oh-my-pi.\n`);
+    console.log(`Usage: node bench/parallel-runner.mjs [--out DIR] [--oh-my-pi-dir DIR] [--install] [--build-native] [--smoke] [--no-clone] [--prompts-only]\n\nCreates a neutral task plan and prompt corpus for this extension and oh-my-pi.\n\n--install       run bun install in oh-my-pi\n--build-native  run bun --cwd=packages/natives run build in oh-my-pi\n--smoke         run bun packages/coding-agent/src/cli.ts --version and record readiness\n`);
     return;
   }
   const plan = buildPlan();
@@ -103,7 +122,12 @@ async function main() {
 
   const thisCmd = `PI_TAGGED_EDIT_METRICS=${path.join(args.out, "this-extension.metrics.jsonl")} pi -e ${path.join(ROOT, "src/index.ts")}`;
   const ompCmd = omp.present ? `cd ${omp.dir} && bun packages/coding-agent/src/cli.ts` : null;
-  await fsp.writeFile(path.join(args.out, "RUNBOOK.md"), `# Parallel benchmark runbook\n\nGenerated: ${new Date().toISOString()}\n\n## This extension\n\n\`\`\`bash\n${thisCmd}\n\`\`\`\n\nUse prompts in \`tasks/*/{old_new,tagged,hashline,crc}.prompt.md\`.\n\n## oh-my-pi\n\n${omp.present ? `\`\`\`bash\n${ompCmd}\n\`\`\`` : `oh-my-pi not available: ${omp.reason ?? "unknown"}`}\n\nUse prompts in \`tasks/*/oh_my_pi.prompt.md\`.\n\n## Outputs to collect\n\n- final fixture.ts for each task/mode\n- session token/cost stats from each harness\n- this extension metrics JSONL\n- retry count and mismatch/recovery count\n`);
+  const setupHints = !omp.present
+    ? `oh-my-pi not available: ${omp.reason ?? "unknown"}`
+    : omp.ready
+      ? "oh-my-pi smoke check passed."
+      : `oh-my-pi is present but not smoke-ready. Try:\n\n\`\`\`bash\nnpm run bench:parallel -- --out ${args.out} --oh-my-pi-dir ${omp.dir} --install --build-native --smoke\n\`\`\``;
+  await fsp.writeFile(path.join(args.out, "RUNBOOK.md"), `# Parallel benchmark runbook\n\nGenerated: ${new Date().toISOString()}\n\n## This extension\n\n\`\`\`bash\n${thisCmd}\n\`\`\`\n\nUse prompts in \`tasks/*/{old_new,tagged,hashline,crc}.prompt.md\`.\n\n## oh-my-pi\n\n${setupHints}\n\n${omp.present ? `\`\`\`bash\n${ompCmd}\n\`\`\`` : ""}\n\nUse prompts in \`tasks/*/oh_my_pi.prompt.md\`.\n\n## Outputs to collect\n\n- final fixture.ts for each task/mode\n- session token/cost stats from each harness\n- this extension metrics JSONL\n- retry count and mismatch/recovery count\n`);
 
   console.log(JSON.stringify({ out: args.out, ohMyPi: omp, totals: summarizePlan(plan) }, null, 2));
 }

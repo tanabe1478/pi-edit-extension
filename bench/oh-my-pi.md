@@ -16,11 +16,17 @@ Or generate the full parallel run directory, task fixtures, prompts, summary, an
 npm run bench:parallel -- --out /tmp/pi-edit-parallel
 ```
 
-Use `--install` if you want the runner to run `bun install` inside the oh-my-pi checkout:
+Use `--install`, `--build-native`, and `--smoke` if you want the runner to prepare oh-my-pi and verify that its CLI starts:
 
 ```bash
-npm run bench:parallel -- --out /tmp/pi-edit-parallel --install
+npm run bench:parallel -- \
+  --out /tmp/pi-edit-parallel \
+  --install \
+  --build-native \
+  --smoke
 ```
+
+The setup step is recorded in `oh-my-pi.json`. If the native build takes too long, rerun the same command; Cargo/Bun caches make the second run faster.
 
 The JSON contains:
 

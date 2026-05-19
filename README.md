@@ -187,6 +187,12 @@ Generate a full parallel run directory for this extension and upstream oh-my-pi:
 npm run bench:parallel -- --out /tmp/pi-edit-parallel
 ```
 
+Prepare and smoke-check upstream oh-my-pi as well:
+
+```bash
+npm run bench:parallel -- --out /tmp/pi-edit-parallel --install --build-native --smoke
+```
+
 See `bench/oh-my-pi.md` for the parallel upstream run notes.
 
 Run the same task suite under four modes:
