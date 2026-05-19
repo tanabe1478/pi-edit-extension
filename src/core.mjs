@@ -1,6 +1,7 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 import * as os from "node:os";
+import bigrams from "../vendor/oh-my-pi/bigrams.json" with { type: "json" };
 
 const CRC32_TABLE = new Uint32Array(256);
 for (let i = 0; i < 256; i++) {
@@ -22,15 +23,13 @@ export function tagFor(line, chars = 4, salt = "") {
   return buf.toString("base64url").slice(0, chars);
 }
 
-const HASHLINE_BIGRAMS = Array.from({ length: 26 * 26 }, (_, i) =>
-  String.fromCharCode(97 + Math.floor(i / 26)) + String.fromCharCode(97 + (i % 26)),
-);
+export const HASHLINE_BIGRAMS = bigrams;
 
 export function hashlineHash(line) {
-  // oh-my-pi uses a curated 647-entry single-token bigram table and xxHash32.
-  // This prototype keeps the same shape (2 lowercase letters) with CRC32 over
-  // content trimmed like oh-my-pi. Good enough for tool-behavior and payload-size
-  // experiments; replace with the curated table before claiming tokenizer parity.
+  // Same normalization and anchor alphabet shape as oh-my-pi: content-only hash,
+  // CR removed, trailing whitespace ignored, mapped to a curated single-token
+  // lowercase bigram table. We use CRC32 instead of Bun's xxHash32 so the
+  // extension runs in stock Node/pi extension environments.
   const normalized = line.replace(/\r/g, "").trimEnd();
   return HASHLINE_BIGRAMS[crc32(normalized) % HASHLINE_BIGRAMS.length];
 }
@@ -111,13 +110,42 @@ export function parseHashlineAnchor(anchor) {
   return { line: Number(m[1]), hash: m[2] };
 }
 
-function validateHashlineAnchor(anchor, lines) {
+export class HashlineMismatchError extends Error {
+  constructor(mismatches, lines) {
+    super(formatHashlineMismatch(mismatches, lines));
+    this.name = "HashlineMismatchError";
+    this.mismatches = mismatches;
+  }
+}
+
+export function formatHashlineMismatch(mismatches, lines, context = 2) {
+  const wanted = new Set(mismatches.map((m) => m.line));
+  const display = new Set();
+  for (const m of mismatches) {
+    for (let n = Math.max(1, m.line - context); n <= Math.min(lines.length, m.line + context); n++) display.add(n);
+  }
+  const out = [
+    `Edit rejected: ${mismatches.length} anchor${mismatches.length === 1 ? "" : "s"} did not match the current file.`,
+    "The edit was NOT applied. Re-read the shown area and issue another edit.",
+    "",
+  ];
+  let prev = 0;
+  for (const n of [...display].sort((a, b) => a - b)) {
+    if (prev && n > prev + 1) out.push("...");
+    const mark = wanted.has(n) ? "*" : " ";
+    out.push(`${mark}${formatHashlineLine(n, lines[n - 1] ?? "")}`);
+    prev = n;
+  }
+  return out.join("\n");
+}
+
+function validateHashlineAnchor(anchor, lines, mismatches) {
   const parsed = parseHashlineAnchor(anchor);
   if (parsed.special) return parsed;
   const actual = lines[parsed.line - 1];
   if (actual === undefined) throw new Error(`Line ${parsed.line} is outside file`);
   const actualHash = hashlineHash(actual);
-  if (actualHash !== parsed.hash) throw new Error(`Anchor mismatch at line ${parsed.line}: expected ${parsed.hash}, actual ${actualHash}`);
+  if (actualHash !== parsed.hash) mismatches.push({ line: parsed.line, expected: parsed.hash, actual: actualHash });
   return parsed;
 }
 
@@ -132,6 +160,7 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
   const parsed = splitLinesPreserveFinalNewline(text);
   const patchLines = String(patch).replace(/\r\n/g, "\n").split("\n");
   const ops = [];
+  const mismatches = [];
   for (let i = 0; i < patchLines.length; ) {
     const raw = patchLines[i].trimEnd();
     i++;
@@ -139,7 +168,7 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
     const op = raw[0];
     const rest = raw.slice(1).trim();
     if (op === "+" || op === "<") {
-      const anchor = validateHashlineAnchor(rest, parsed.lines);
+      const anchor = validateHashlineAnchor(rest, parsed.lines, mismatches);
       const payload = parsePayload(patchLines, i, payloadSep);
       i = payload.next;
       ops.push({ kind: op === "+" ? "after" : "before", anchor, payload: payload.payload });
@@ -148,8 +177,8 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
     if (op === "-" || op === "=") {
       const m = /^(.+)\.\.(.+)$/.exec(rest);
       if (!m) throw new Error(`Expected range A..B in op: ${raw}`);
-      const a = validateHashlineAnchor(m[1], parsed.lines);
-      const b = validateHashlineAnchor(m[2], parsed.lines);
+      const a = validateHashlineAnchor(m[1], parsed.lines, mismatches);
+      const b = validateHashlineAnchor(m[2], parsed.lines, mismatches);
       if (a.special || b.special) throw new Error(`Range anchors must be concrete lines: ${raw}`);
       if (a.line > b.line) throw new Error(`Range start must be <= end: ${raw}`);
       const payload = op === "=" ? parsePayload(patchLines, i, payloadSep) : { payload: [], next: i };
@@ -159,6 +188,8 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
     }
     throw new Error(`Unknown hashline op: ${raw}`);
   }
+
+  if (mismatches.length) throw new HashlineMismatchError(mismatches, parsed.lines);
 
   const rangeOps = ops.filter((op) => op.kind === "delete" || op.kind === "replace").sort((a, b) => a.start - b.start);
   for (let i = 1; i < rangeOps.length; i++) if (rangeOps[i].start <= rangeOps[i - 1].end) throw new Error("Hashline range edits must not overlap");

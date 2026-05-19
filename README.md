@@ -157,11 +157,19 @@ npm test
 
 - Edits are whole-line only.
 - Tags are short CRC32-derived prefixes, so collisions are possible.
-- `read_hashline` currently approximates oh-my-pi's hash table; it does not yet vendor the curated 647 single-token bigram list.
+- `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list, but uses CRC32 instead of Bun's `xxHash32` for Node portability.
 - The hashline patch parser is intentionally small and lacks oh-my-pi recovery, duplicate-boundary absorption, LSP writethrough, and streaming preview.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
 
 ## Experiment plan
+
+Generate a neutral benchmark plan for this extension and oh-my-pi:
+
+```bash
+npm run bench:plan -- /tmp/pi-edit-plan.json
+```
+
+See `bench/oh-my-pi.md` for the parallel upstream run notes.
 
 Run the same task suite under four modes:
 

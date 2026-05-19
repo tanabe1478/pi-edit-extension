@@ -1,0 +1,66 @@
+# oh-my-pi parallel benchmark notes
+
+Goal: compare this extension's modes against upstream `can1357/oh-my-pi` hashline on the same task plan.
+
+## Inputs
+
+Generate a neutral benchmark plan:
+
+```bash
+node bench/plan.mjs /tmp/pi-edit-plan.json
+```
+
+The JSON contains:
+
+- fixture source text
+- scenario ranges and expected replacement text
+- equivalent edit payloads for:
+  - `old_new`
+  - `tagged`
+  - `hashline`
+  - `crc`
+
+## Running this extension
+
+Use `PI_TAGGED_EDIT_METRICS` to capture JSONL:
+
+```bash
+export PI_TAGGED_EDIT_METRICS=/tmp/pi-edit-extension.jsonl
+pi -e ./src/index.ts
+```
+
+Ask the model to solve each scenario using one specified mode only.
+
+## Running oh-my-pi in parallel
+
+Clone upstream separately:
+
+```bash
+git clone https://github.com/can1357/oh-my-pi /tmp/oh-my-pi
+OH_MY_PI_DIR=/tmp/oh-my-pi node bench/plan.mjs /tmp/pi-edit-plan.json
+```
+
+The planner verifies that the upstream docs and hashline implementation are present. Then run oh-my-pi/omp against the same fixture and scenario prompts, forcing its default hashline edit mode.
+
+## Metrics to compare
+
+Primary:
+
+- task success rate
+- edit-call output tokens/chars
+- retry count
+- stale-anchor rejection rate
+
+Secondary:
+
+- read output chars/tokens
+- wall time
+- mismatch diagnostic usefulness
+- number of edit ops
+- whether the model chooses narrow `+`/`-` ops instead of broad `=` ranges
+
+## Important fairness notes
+
+- This extension now vendors oh-my-pi's curated bigram table but uses CRC32 for Node portability. oh-my-pi uses Bun's `xxHash32`.
+- Payload language is intentionally aligned (`@@ PATH`, `+`, `<`, `-`, `=`, `~payload`).
+- oh-my-pi has additional production features not yet mirrored here: stale-anchor recovery via read cache, LSP writethrough, duplicate-boundary absorption, streaming preview, and richer model prompts.

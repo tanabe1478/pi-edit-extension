@@ -10,6 +10,7 @@
   "scripts": {
     "test": "node --test test/*.test.mjs",
     "bench": "node bench/bench.mjs",
+    "bench:plan": "node bench/plan.mjs",
     "scan:secrets": "gitleaks detect --source . --verbose --redact"
   },
   "keywords": ["pi", "extension", "llm", "edit", "checksum", "benchmark"],

@@ -65,5 +65,5 @@ test("hashline patch replaces and inserts by anchors", () => {
 
 test("hashline patch rejects stale anchors", () => {
   const stale = formatHashlineAnchor(1, "old");
-  assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n- ${stale}..${stale}`), /Anchor mismatch/);
+  assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n- ${stale}..${stale}`), /Edit rejected/);
 });
