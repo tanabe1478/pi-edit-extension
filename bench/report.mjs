@@ -51,7 +51,18 @@ function buildReport(dir) {
   const plan = readJson(path.join(dir, "plan.json"), {});
   const omp = readJson(path.join(dir, "oh-my-pi.json"), {});
   const metrics = readJsonl(path.join(dir, "this-extension.metrics.jsonl"));
-  const totals = summary.totals || {};
+  const actual = readJson(path.join(dir, "actual-results.json"), null);
+  const totals = summary.totals || (() => {
+    const out = {};
+    for (const s of plan.scenarios || []) {
+      for (const [mode, metric] of Object.entries(s.metrics || {})) {
+        out[mode] ??= { chars: 0, tokens_est: 0 };
+        out[mode].chars += metric.chars || 0;
+        out[mode].tokens_est += metric.tokens_est || 0;
+      }
+    }
+    return out;
+  })();
   const base = totals.old_new?.chars || 0;
 
   const rows = Object.entries(totals).map(([mode, m]) => [
@@ -80,6 +91,14 @@ function buildReport(dir) {
   lines.push("");
   lines.push(table(["scenario", "lines", "old_new", "pi_edit", "tagged", "hashline", "crc"], taskRows));
   lines.push("");
+  lines.push(`## Actual harness run results`);
+  lines.push("");
+  if (actual?.summary) {
+    lines.push(table(["mode", "success", "total", "avg_duration_ms"], Object.entries(actual.summary).map(([mode, s]) => [mode, s.success, s.total, s.avg_duration_ms])));
+  } else {
+    lines.push("No `actual-results.json` found yet.");
+  }
+  lines.push("");
   lines.push(`## this-extension runtime metrics`);
   lines.push("");
   if (metricRows.length) lines.push(table(["tool", "calls", "inputChars", "resultChars", "savedCharsEstimate", "recovered"], metricRows));
@@ -102,7 +121,7 @@ function buildReport(dir) {
   lines.push(`2. Save final fixture outputs by mode for correctness checking.`);
   lines.push(`3. Re-run this report after metrics JSONL exists.`);
 
-  return { markdown: lines.join("\n"), json: { dir, totals, scenarios: plan.scenarios || [], metricSummary, ohMyPi: omp } };
+  return { markdown: lines.join("\n"), json: { dir, totals, scenarios: plan.scenarios || [], actual: actual?.summary || null, metricSummary, ohMyPi: omp } };
 }
 
 const args = parseArgs(process.argv.slice(2));

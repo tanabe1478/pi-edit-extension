@@ -193,6 +193,18 @@ Prepare and smoke-check upstream oh-my-pi as well:
 npm run bench:parallel -- --out /tmp/pi-edit-parallel --install --build-native --smoke
 ```
 
+Run actual pi harness comparisons for selected modes:
+
+```bash
+npm run bench:actual -- --out /tmp/pi-edit-actual --modes pi_edit,tagged,hashline,crc
+```
+
+`oh_my_pi` can be included once `/Users/tanabe.nobuyuki/.omp/agent` has a model configured or API keys are exported:
+
+```bash
+npm run bench:actual -- --out /tmp/pi-edit-actual-omp --modes oh_my_pi --include-oh-my-pi
+```
+
 Generate a report from a run directory:
 
 ```bash

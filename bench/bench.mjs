@@ -36,7 +36,8 @@ function makeHashlinePatch(text, start, end, newText) {
 
 function compareScenario(name, text, start, end, newText) {
   const { lines } = splitLinesPreserveFinalNewline(text);
-  const oldText = lines.slice(start - 1, end).join("\n");
+  const oldTextBody = lines.slice(start - 1, end).join("\n");
+  const oldText = newText === "" && end < lines.length ? `${oldTextBody}\n` : oldTextBody;
   const oldNew = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const piEdit = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const tagged = { path: "fixture.ts", edits: [{ lines: makeTaggedSpec(text, start, end), newText }] };

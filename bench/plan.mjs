@@ -42,7 +42,8 @@ function hashlinePatch(text, start, end, newText, op = "replace") {
 
 function scenario(name, text, start, end, newText) {
   const { lines } = splitLinesPreserveFinalNewline(text);
-  const oldText = lines.slice(start - 1, end).join("\n");
+  const oldTextBody = lines.slice(start - 1, end).join("\n");
+  const oldText = newText === "" && end < lines.length ? `${oldTextBody}\n` : oldTextBody;
   const op = newText === "" ? "delete" : "replace";
   const piEdit = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const payloads = {
