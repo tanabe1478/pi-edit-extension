@@ -181,6 +181,12 @@ Generate a neutral benchmark plan for this extension and oh-my-pi:
 npm run bench:plan -- /tmp/pi-edit-plan.json
 ```
 
+Generate a full parallel run directory for this extension and upstream oh-my-pi:
+
+```bash
+npm run bench:parallel -- --out /tmp/pi-edit-parallel
+```
+
 See `bench/oh-my-pi.md` for the parallel upstream run notes.
 
 Run the same task suite under four modes:

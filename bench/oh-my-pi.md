@@ -10,6 +10,18 @@ Generate a neutral benchmark plan:
 node bench/plan.mjs /tmp/pi-edit-plan.json
 ```
 
+Or generate the full parallel run directory, task fixtures, prompts, summary, and oh-my-pi checkout metadata:
+
+```bash
+npm run bench:parallel -- --out /tmp/pi-edit-parallel
+```
+
+Use `--install` if you want the runner to run `bun install` inside the oh-my-pi checkout:
+
+```bash
+npm run bench:parallel -- --out /tmp/pi-edit-parallel --install
+```
+
 The JSON contains:
 
 - fixture source text
@@ -33,14 +45,13 @@ Ask the model to solve each scenario using one specified mode only.
 
 ## Running oh-my-pi in parallel
 
-Clone upstream separately:
+The parallel runner clones upstream by default to `/tmp/oh-my-pi-bench` unless `OH_MY_PI_DIR` or `--oh-my-pi-dir` is provided.
 
 ```bash
-git clone https://github.com/can1357/oh-my-pi /tmp/oh-my-pi
-OH_MY_PI_DIR=/tmp/oh-my-pi node bench/plan.mjs /tmp/pi-edit-plan.json
+npm run bench:parallel -- --oh-my-pi-dir /tmp/oh-my-pi-bench --out /tmp/pi-edit-parallel
 ```
 
-The planner verifies that the upstream docs and hashline implementation are present. Then run oh-my-pi/omp against the same fixture and scenario prompts, forcing its default hashline edit mode.
+It verifies that the upstream docs and hashline implementation are present. Then run oh-my-pi/omp against the same fixture and scenario prompts in `/tmp/pi-edit-parallel/tasks/*/oh_my_pi.prompt.md`, forcing its default hashline edit mode.
 
 ## Metrics to compare
 
