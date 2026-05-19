@@ -23,7 +23,19 @@ Reads a file using an oh-my-pi-style compact anchor format:
 42sr|function hi() {
 ```
 
-The anchor is `42sr`: line number plus a 2-letter content hash. This prototype uses CRC32 modulo `aa..zz`; oh-my-pi uses xxHash32 plus a curated 647-entry single-token bigram table.
+The anchor is `42sr`: line number plus a 2-letter content hash. This implementation matches oh-my-pi's anchor algorithm: trim trailing whitespace, remove CR, hash with xxHash32 seed 0, then map into the curated 647-entry single-token bigram table.
+
+### `search_hashline`
+
+Searches a file or directory and returns matches plus context with the same `LINEhh|TEXT` anchors as `read_hashline`.
+
+Parameters:
+
+- `path`
+- `pattern`
+- `regex?`
+- `context?` default `2`
+- `limit?` default `100`
 
 ### `edit_hashline_patch`
 
@@ -157,7 +169,7 @@ npm test
 
 - Edits are whole-line only.
 - Tags are short CRC32-derived prefixes, so collisions are possible.
-- `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list, but uses CRC32 instead of Bun's `xxHash32` for Node portability.
+- `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list and uses a Node-compatible xxHash32 implementation matching `Bun.hash.xxHash32(input, 0)`.
 - The hashline patch parser is intentionally small and lacks oh-my-pi recovery, duplicate-boundary absorption, LSP writethrough, and streaming preview.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
 

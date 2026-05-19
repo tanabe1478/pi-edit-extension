@@ -7,6 +7,7 @@ import {
   estimateJsonChars,
   estimateTokensFromChars,
   formatHashline,
+  formatHashlineLine,
   formatTagged,
   resolveUserPath,
   splitLinesPreserveFinalNewline,
@@ -98,6 +99,74 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
           fileCrc32: crc32(fileText).toString(16).padStart(8, "0"),
         },
       };
+    },
+  });
+
+  pi.registerTool({
+    name: "search_hashline",
+    label: "Search hashline",
+    description:
+      "Search text files and return matching lines plus context using read_hashline-compatible LINEhh|content anchors.",
+    parameters: Type.Object({
+      path: Type.String({ description: "File or directory path to search" }),
+      pattern: Type.String({ description: "Literal string or regex pattern" }),
+      regex: Type.Optional(Type.Boolean({ description: "Treat pattern as JavaScript regex; default false" })),
+      context: Type.Optional(Type.Number({ description: "Context lines around each match; default 2", minimum: 0, maximum: 10 })),
+      limit: Type.Optional(Type.Number({ description: "Maximum matching lines; default 100", minimum: 1 })),
+    }),
+    async execute(_toolCallId, params) {
+      const root = resolveUserPath(params.path);
+      const context = params.context ?? 2;
+      const limit = params.limit ?? 100;
+      const matcher = params.regex
+        ? new RegExp(params.pattern)
+        : { test: (line: string) => line.includes(params.pattern) };
+      const files: string[] = [];
+      async function walk(p: string) {
+        const st = await fs.stat(p);
+        if (st.isFile()) { files.push(p); return; }
+        if (!st.isDirectory()) return;
+        for (const ent of await fs.readdir(p, { withFileTypes: true })) {
+          if (ent.name === ".git" || ent.name === "node_modules" || ent.name === "dist" || ent.name === "build") continue;
+          const child = `${p}/${ent.name}`;
+          if (ent.isDirectory()) await walk(child);
+          else if (ent.isFile()) files.push(child);
+        }
+      }
+      await walk(root);
+      const out: string[] = [];
+      let matches = 0;
+      for (const file of files.sort()) {
+        let text: string;
+        try { text = await fs.readFile(file, "utf8"); } catch { continue; }
+        if (text.includes("\0")) continue;
+        const fileLines = splitLinesPreserveFinalNewline(text).lines;
+        const selected = new Set<number>();
+        for (let i = 0; i < fileLines.length; i++) {
+          if (!matcher.test(fileLines[i])) continue;
+          matches++;
+          for (let n = Math.max(1, i + 1 - context); n <= Math.min(fileLines.length, i + 1 + context); n++) selected.add(n);
+          if (matches >= limit) break;
+        }
+        if (!selected.size) continue;
+        out.push(`@@ ${file}`);
+        let prev = 0;
+        for (const n of [...selected].sort((a, b) => a - b)) {
+          if (prev && n > prev + 1) out.push("...");
+          out.push(formatHashlineLine(n, fileLines[n - 1] ?? ""));
+          prev = n;
+        }
+        if (matches >= limit) break;
+      }
+      const text = out.join("\n");
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "search_hashline",
+        path: root,
+        matches,
+        resultChars: text.length,
+        resultTokenEstimate: estimateTokensFromChars(text.length),
+      });
+      return { content: [{ type: "text", text: text || "No matches" }], details: { path: root, matches, files: files.length } };
     },
   });
 

@@ -17,6 +17,61 @@ export function crc32(s) {
   return (c ^ 0xffffffff) >>> 0;
 }
 
+const XXH_PRIME32_1 = 0x9e3779b1;
+const XXH_PRIME32_2 = 0x85ebca77;
+const XXH_PRIME32_3 = 0xc2b2ae3d;
+const XXH_PRIME32_4 = 0x27d4eb2f;
+const XXH_PRIME32_5 = 0x165667b1;
+
+const rotl32 = (x, r) => ((x << r) | (x >>> (32 - r))) >>> 0;
+const readU32LE = (b, i) => (b[i] | (b[i + 1] << 8) | (b[i + 2] << 16) | (b[i + 3] << 24)) >>> 0;
+
+function xxh32Round(acc, lane) {
+  acc = (acc + Math.imul(lane, XXH_PRIME32_2)) >>> 0;
+  acc = rotl32(acc, 13);
+  return Math.imul(acc, XXH_PRIME32_1) >>> 0;
+}
+
+/** Node-compatible xxHash32 implementation matching Bun.hash.xxHash32(input, seed). */
+export function xxHash32(s, seed = 0) {
+  const b = Buffer.from(s, "utf8");
+  let i = 0;
+  let h;
+  if (b.length >= 16) {
+    let v1 = (seed + XXH_PRIME32_1 + XXH_PRIME32_2) >>> 0;
+    let v2 = (seed + XXH_PRIME32_2) >>> 0;
+    let v3 = seed >>> 0;
+    let v4 = (seed - XXH_PRIME32_1) >>> 0;
+    const limit = b.length - 16;
+    while (i <= limit) {
+      v1 = xxh32Round(v1, readU32LE(b, i)); i += 4;
+      v2 = xxh32Round(v2, readU32LE(b, i)); i += 4;
+      v3 = xxh32Round(v3, readU32LE(b, i)); i += 4;
+      v4 = xxh32Round(v4, readU32LE(b, i)); i += 4;
+    }
+    h = (rotl32(v1, 1) + rotl32(v2, 7) + rotl32(v3, 12) + rotl32(v4, 18)) >>> 0;
+  } else {
+    h = (seed + XXH_PRIME32_5) >>> 0;
+  }
+  h = (h + b.length) >>> 0;
+  while (i <= b.length - 4) {
+    h = (h + Math.imul(readU32LE(b, i), XXH_PRIME32_3)) >>> 0;
+    h = Math.imul(rotl32(h, 17), XXH_PRIME32_4) >>> 0;
+    i += 4;
+  }
+  while (i < b.length) {
+    h = (h + Math.imul(b[i], XXH_PRIME32_5)) >>> 0;
+    h = Math.imul(rotl32(h, 11), XXH_PRIME32_1) >>> 0;
+    i++;
+  }
+  h ^= h >>> 15;
+  h = Math.imul(h, XXH_PRIME32_2) >>> 0;
+  h ^= h >>> 13;
+  h = Math.imul(h, XXH_PRIME32_3) >>> 0;
+  h ^= h >>> 16;
+  return h >>> 0;
+}
+
 export function tagFor(line, chars = 4, salt = "") {
   const buf = Buffer.allocUnsafe(4);
   buf.writeUInt32BE(crc32(`${salt}${line}`), 0);
@@ -26,12 +81,11 @@ export function tagFor(line, chars = 4, salt = "") {
 export const HASHLINE_BIGRAMS = bigrams;
 
 export function hashlineHash(line) {
-  // Same normalization and anchor alphabet shape as oh-my-pi: content-only hash,
-  // CR removed, trailing whitespace ignored, mapped to a curated single-token
-  // lowercase bigram table. We use CRC32 instead of Bun's xxHash32 so the
-  // extension runs in stock Node/pi extension environments.
+  // Matches oh-my-pi's normalization and hashing: content-only hash, CR removed,
+  // trailing whitespace ignored, xxHash32(seed=0), mapped to the curated
+  // single-token lowercase bigram table.
   const normalized = line.replace(/\r/g, "").trimEnd();
-  return HASHLINE_BIGRAMS[crc32(normalized) % HASHLINE_BIGRAMS.length];
+  return HASHLINE_BIGRAMS[xxHash32(normalized, 0) % HASHLINE_BIGRAMS.length];
 }
 
 export function formatHashlineAnchor(lineNumber, line) {

@@ -9,6 +9,7 @@ import {
   tagFor,
   validateAndApplyHashlinePatch,
   validateAndApplyTaggedEdits,
+  xxHash32,
 } from "../src/core.mjs";
 
 test("formatTagged emits line:tag content", () => {
@@ -47,6 +48,12 @@ test("CRLF style is preserved", () => {
 
 test("parseTaggedLines parses line specs", () => {
   assert.deepEqual(parseTaggedLines("10:abcd\n11:EF_-") , [{ line: 10, tag: "abcd" }, { line: 11, tag: "EF_-" }]);
+});
+
+test("xxHash32 matches Bun.hash.xxHash32 reference values", () => {
+  assert.equal(xxHash32("", 0), 46947589);
+  assert.equal(xxHash32("a", 0), 1426945110);
+  assert.equal(xxHash32("hello", 0), 4211111929);
 });
 
 test("formatHashline emits compact LINEhh pipe format", () => {
