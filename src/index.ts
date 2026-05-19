@@ -6,10 +6,12 @@ import {
   crc32,
   estimateJsonChars,
   estimateTokensFromChars,
+  formatHashline,
   formatTagged,
   resolveUserPath,
   splitLinesPreserveFinalNewline,
   tagFor,
+  validateAndApplyHashlinePatch,
   validateAndApplyTaggedEdits,
 } from "./core.mjs";
 
@@ -58,6 +60,41 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
           totalLines: result.totalLines,
           tagChars,
           saltMode,
+          fileCrc32: crc32(fileText).toString(16).padStart(8, "0"),
+        },
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: "read_hashline",
+    label: "Read hashline",
+    description:
+      "Read a text file using oh-my-pi-style compact hashline anchors: LINEhh|content. Use anchors with edit_hashline_patch.",
+    parameters: Type.Object({
+      path: Type.String({ description: "File path, relative to current working directory or absolute" }),
+      offset: Type.Optional(Type.Number({ description: "1-indexed start line", minimum: 1 })),
+      limit: Type.Optional(Type.Number({ description: "Maximum number of lines", minimum: 1 })),
+    }),
+    async execute(_toolCallId, params) {
+      const p = resolveUserPath(params.path);
+      const fileText = await fs.readFile(p, "utf8");
+      const result = formatHashline(fileText, { offset: params.offset, limit: params.limit });
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "read_hashline",
+        path: p,
+        linesReturned: result.end >= result.start ? result.end - result.start + 1 : 0,
+        resultChars: result.text.length,
+        resultTokenEstimate: estimateTokensFromChars(result.text.length),
+      });
+      return {
+        content: [{ type: "text", text: result.text }],
+        details: {
+          path: p,
+          start: result.start,
+          end: result.end,
+          totalLines: result.totalLines,
+          hashShape: "LINEhh|TEXT",
           fileCrc32: crc32(fileText).toString(16).padStart(8, "0"),
         },
       };
@@ -114,6 +151,46 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
       return {
         content: [{ type: "text", text: `Applied ${result.ranges.length} tagged edit(s) to ${p}` }],
         details: { path: p, edits: result.ranges.length, tagChars, saltMode },
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: "edit_hashline_patch",
+    label: "Edit hashline patch",
+    description:
+      "Apply a compact oh-my-pi-style hashline patch. Anchors are copied from read_hashline as LINEhh. Ops: + ANCHOR, < ANCHOR, - A..B, = A..B; payload lines start with ~.",
+    parameters: Type.Object({
+      input: Type.String({ description: "Patch text. Sections start with @@ PATH. Payload lines start with ~ by default." }),
+      payloadSep: Type.Optional(Type.String({ description: "Payload line separator; default ~" })),
+    }),
+    async execute(_toolCallId, params) {
+      const sections = String(params.input)
+        .split(/\n(?=@@\s+)/)
+        .map((s) => s.trimEnd())
+        .filter(Boolean);
+      const results = [];
+      for (const section of sections) {
+        const lines = section.split(/\n/);
+        const header = lines.find((l) => l.trim().startsWith("@@"));
+        if (!header) throw new Error("Hashline patch section must start with @@ PATH");
+        const target = header.replace(/^@@\s*/, "").trim();
+        const p = resolveUserPath(target);
+        const before = await fs.readFile(p, "utf8");
+        const result = validateAndApplyHashlinePatch(before, section, { payloadSep: params.payloadSep ?? "~" });
+        await fs.writeFile(p, result.text, "utf8");
+        results.push({ path: p, ops: result.ops.length });
+      }
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "edit_hashline_patch",
+        sections: results.length,
+        ops: results.reduce((sum, r) => sum + r.ops, 0),
+        inputChars: estimateJsonChars(params),
+        inputTokenEstimate: estimateTokensFromChars(estimateJsonChars(params)),
+      });
+      return {
+        content: [{ type: "text", text: `Applied hashline patch to ${results.map((r) => r.path).join(", ")}` }],
+        details: { results },
       };
     },
   });

@@ -2,6 +2,8 @@
 import {
   estimateJsonChars,
   estimateTokensFromChars,
+  formatHashline,
+  formatHashlineAnchor,
   formatTagged,
   splitLinesPreserveFinalNewline,
   tagFor,
@@ -24,25 +26,38 @@ function makeTaggedSpec(text, start, end, tagChars = 4) {
   return specs.join("\n");
 }
 
+function makeHashlinePatch(text, start, end, newText) {
+  const { lines } = splitLinesPreserveFinalNewline(text);
+  const a = formatHashlineAnchor(start, lines[start - 1]);
+  const b = formatHashlineAnchor(end, lines[end - 1]);
+  const payload = newText.length ? "\n" + newText.split("\n").map((line) => `~${line}`).join("\n") : "";
+  return `@@ fixture.ts\n= ${a}..${b}${payload}`;
+}
+
 function compareScenario(name, text, start, end, newText) {
   const { lines } = splitLinesPreserveFinalNewline(text);
   const oldText = lines.slice(start - 1, end).join("\n");
   const oldNew = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const tagged = { path: "fixture.ts", edits: [{ lines: makeTaggedSpec(text, start, end), newText }] };
   const crc = { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText };
+  const hashline = { input: makeHashlinePatch(text, start, end, newText) };
   const oldNewChars = estimateJsonChars(oldNew);
   const taggedChars = estimateJsonChars(tagged);
   const crcChars = estimateJsonChars(crc);
+  const hashlineChars = estimateJsonChars(hashline);
   return {
     name,
     editedLines: end - start + 1,
     oldNewChars,
     taggedChars,
+    hashlineChars,
     crcChars,
     taggedSavedPct: Number((((oldNewChars - taggedChars) / oldNewChars) * 100).toFixed(1)),
+    hashlineSavedPct: Number((((oldNewChars - hashlineChars) / oldNewChars) * 100).toFixed(1)),
     crcSavedPct: Number((((oldNewChars - crcChars) / oldNewChars) * 100).toFixed(1)),
     oldNewTokensEst: estimateTokensFromChars(oldNewChars),
     taggedTokensEst: estimateTokensFromChars(taggedChars),
+    hashlineTokensEst: estimateTokensFromChars(hashlineChars),
     crcTokensEst: estimateTokensFromChars(crcChars),
   };
 }
@@ -59,12 +74,15 @@ console.table(scenarios);
 const total = scenarios.reduce((acc, x) => {
   acc.oldNewChars += x.oldNewChars;
   acc.taggedChars += x.taggedChars;
+  acc.hashlineChars += x.hashlineChars;
   acc.crcChars += x.crcChars;
   return acc;
-}, { oldNewChars: 0, taggedChars: 0, crcChars: 0 });
+}, { oldNewChars: 0, taggedChars: 0, hashlineChars: 0, crcChars: 0 });
 console.log("TOTAL", {
   ...total,
   taggedSavedPct: Number((((total.oldNewChars - total.taggedChars) / total.oldNewChars) * 100).toFixed(1)),
+  hashlineSavedPct: Number((((total.oldNewChars - total.hashlineChars) / total.oldNewChars) * 100).toFixed(1)),
   crcSavedPct: Number((((total.oldNewChars - total.crcChars) / total.oldNewChars) * 100).toFixed(1)),
 });
 console.log("\nSample read_tagged output:\n" + formatTagged(fixture, { offset: 35, limit: 5 }).text);
+console.log("\nSample read_hashline output:\n" + formatHashline(fixture, { offset: 35, limit: 5 }).text);

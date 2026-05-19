@@ -15,6 +15,35 @@ The model can then edit by line number plus a short checksum tag instead of repe
 
 ## Tools
 
+### `read_hashline`
+
+Reads a file using an oh-my-pi-style compact anchor format:
+
+```text
+42sr|function hi() {
+```
+
+The anchor is `42sr`: line number plus a 2-letter content hash. This prototype uses CRC32 modulo `aa..zz`; oh-my-pi uses xxHash32 plus a curated 647-entry single-token bigram table.
+
+### `edit_hashline_patch`
+
+Applies a compact patch language inspired by oh-my-pi:
+
+```text
+@@ src/a.ts
+= 4fb..5dm
+~const clean = (name || DEF).trim();
+~return clean.length === 0 ? DEF : clean.toUpperCase();
+```
+
+Ops:
+
+- `+ ANCHOR` insert after
+- `< ANCHOR` insert before
+- `- A..B` delete range
+- `= A..B` replace range
+- payload lines start with `~`
+
 ### `read_tagged`
 
 Reads a file and returns lines as:
@@ -114,7 +143,8 @@ npm run bench
 It compares JSON payload sizes for:
 
 - standard `oldText/newText`
-- tagged line edits
+- tagged line edits, antirez-style `line:tag`
+- hashline patch edits, oh-my-pi-style `LINEhh|TEXT`
 - whole-file CRC range edits
 
 ## Tests
@@ -126,6 +156,31 @@ npm test
 ## Current limitations
 
 - Edits are whole-line only.
-- Tags are short CRC32-derived base64url prefixes, so collisions are possible.
-- 4-char tags are intentionally compact; compare with 6/8 chars before production use.
+- Tags are short CRC32-derived prefixes, so collisions are possible.
+- `read_hashline` currently approximates oh-my-pi's hash table; it does not yet vendor the curated 647 single-token bigram list.
+- The hashline patch parser is intentionally small and lacks oh-my-pi recovery, duplicate-boundary absorption, LSP writethrough, and streaming preview.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
+
+## Experiment plan
+
+Run the same task suite under four modes:
+
+1. `oldText/newText` baseline
+2. `read_tagged` + `edit_tagged`
+3. `read_hashline` + `edit_hashline_patch`
+4. `read_tagged` details.fileCrc32 + `edit_crc_range`
+
+Primary metrics:
+
+- model output chars/tokens spent on edit calls
+- edit success rate
+- stale-anchor rejection rate
+- retry count per task
+- task success rate
+
+Secondary metrics:
+
+- read output overhead
+- wall time
+- collision/mismatch diagnostics quality
+- whether the model chooses minimal operations (`+`/`-`) instead of broad `=` ranges
