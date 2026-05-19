@@ -44,8 +44,10 @@ function scenario(name, text, start, end, newText) {
   const { lines } = splitLinesPreserveFinalNewline(text);
   const oldText = lines.slice(start - 1, end).join("\n");
   const op = newText === "" ? "delete" : "replace";
+  const piEdit = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const payloads = {
     old_new: { path: "fixture.ts", edits: [{ oldText, newText }] },
+    pi_edit: piEdit,
     tagged: { path: "fixture.ts", edits: [{ lines: taggedSpec(text, start, end), newText }] },
     hashline: { input: hashlinePatch(text, start, end, newText, op) },
     crc: { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText },

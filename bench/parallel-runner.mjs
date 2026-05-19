@@ -72,7 +72,8 @@ async function ensureOhMyPi(dir, { clone, install, buildNative, smoke }) {
 
 function modePrompt(mode, scenario) {
   const common = `You are editing fixture.ts. Complete exactly this task and do not make unrelated changes.\nScenario: ${scenario.name}\nTarget lines in the original fixture: ${scenario.start}-${scenario.end}.\n`;
-  if (mode === "old_new") return common + `Use only the standard oldText/newText edit style. Replacement text:\n${scenario.payloads.old_new.edits[0].newText}\n`;
+  if (mode === "old_new") return common + `Use only a generic oldText/newText exact replacement edit style. Replacement text:\n${scenario.payloads.old_new.edits[0].newText}\n`;
+  if (mode === "pi_edit") return common + `Use pi's built-in edit tool only. Do not use this extension's tagged/hashline/crc tools. Built-in pi edit payload:\n${JSON.stringify(scenario.payloads.pi_edit, null, 2)}\n`;
   if (mode === "tagged") return common + `Use read_tagged/edit_tagged only. edit_tagged payload:\n${JSON.stringify(scenario.payloads.tagged, null, 2)}\n`;
   if (mode === "hashline") return common + `Use read_hashline/edit_hashline_patch only. Patch:\n${scenario.payloads.hashline.input}\n`;
   if (mode === "crc") return common + `Use read_tagged to get fileCrc32, then edit_crc_range. Payload shape:\n${JSON.stringify(scenario.payloads.crc, null, 2)}\n`;
@@ -82,7 +83,7 @@ function modePrompt(mode, scenario) {
 
 async function writeFixtureTasks(outDir, plan) {
   await fsp.mkdir(path.join(outDir, "tasks"), { recursive: true });
-  const modes = ["old_new", "tagged", "hashline", "crc", "oh_my_pi"];
+  const modes = ["old_new", "pi_edit", "tagged", "hashline", "crc", "oh_my_pi"];
   for (const scenario of plan.scenarios) {
     const slug = scenario.name.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase();
     const dir = path.join(outDir, "tasks", slug);
@@ -127,7 +128,7 @@ async function main() {
     : omp.ready
       ? "oh-my-pi smoke check passed."
       : `oh-my-pi is present but not smoke-ready. Try:\n\n\`\`\`bash\nnpm run bench:parallel -- --out ${args.out} --oh-my-pi-dir ${omp.dir} --install --build-native --smoke\n\`\`\``;
-  await fsp.writeFile(path.join(args.out, "RUNBOOK.md"), `# Parallel benchmark runbook\n\nGenerated: ${new Date().toISOString()}\n\n## This extension\n\n\`\`\`bash\n${thisCmd}\n\`\`\`\n\nUse prompts in \`tasks/*/{old_new,tagged,hashline,crc}.prompt.md\`.\n\n## oh-my-pi\n\n${setupHints}\n\n${omp.present ? `\`\`\`bash\n${ompCmd}\n\`\`\`` : ""}\n\nUse prompts in \`tasks/*/oh_my_pi.prompt.md\`.\n\n## Outputs to collect\n\n- final fixture.ts for each task/mode\n- session token/cost stats from each harness\n- this extension metrics JSONL\n- retry count and mismatch/recovery count\n`);
+  await fsp.writeFile(path.join(args.out, "RUNBOOK.md"), `# Parallel benchmark runbook\n\nGenerated: ${new Date().toISOString()}\n\n## This extension\n\n\`\`\`bash\n${thisCmd}\n\`\`\`\n\nUse prompts in \`tasks/*/{old_new,pi_edit,tagged,hashline,crc}.prompt.md\`.\n\n## oh-my-pi\n\n${setupHints}\n\n${omp.present ? `\`\`\`bash\n${ompCmd}\n\`\`\`` : ""}\n\nUse prompts in \`tasks/*/oh_my_pi.prompt.md\`.\n\n## Outputs to collect\n\n- final fixture.ts for each task/mode\n- session token/cost stats from each harness\n- this extension metrics JSONL\n- retry count and mismatch/recovery count\n`);
 
   console.log(JSON.stringify({ out: args.out, ohMyPi: omp, totals: summarizePlan(plan) }, null, 2));
 }

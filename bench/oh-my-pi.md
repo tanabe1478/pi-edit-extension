@@ -34,6 +34,7 @@ The JSON contains:
 - scenario ranges and expected replacement text
 - equivalent edit payloads for:
   - `old_new`
+  - `pi_edit`
   - `tagged`
   - `hashline`
   - `crc`
@@ -88,6 +89,7 @@ Secondary:
 
 ## Important fairness notes
 
-- This extension now vendors oh-my-pi's curated bigram table but uses CRC32 for Node portability. oh-my-pi uses Bun's `xxHash32`.
+- This extension vendors oh-my-pi's curated bigram table and uses a Node-compatible `xxHash32` matching Bun reference values.
+- `old_new` and `pi_edit` have identical payload-size estimates, but real runs keep them separate to measure pi built-in tool behavior.
 - Payload language is intentionally aligned (`@@ PATH`, `+`, `<`, `-`, `=`, `~payload`).
 - oh-my-pi has additional production features not yet mirrored here: stale-anchor recovery via read cache, LSP writethrough, duplicate-boundary absorption, streaming preview, and richer model prompts.

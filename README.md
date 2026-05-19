@@ -201,12 +201,15 @@ npm run bench:report -- --dir /tmp/pi-edit-parallel --out /tmp/pi-edit-parallel/
 
 See `bench/oh-my-pi.md` for the parallel upstream run notes.
 
-Run the same task suite under four modes:
+Run the same task suite under five modes:
 
-1. `oldText/newText` baseline
-2. `read_tagged` + `edit_tagged`
-3. `read_hashline` + `edit_hashline_patch`
-4. `read_tagged` details.fileCrc32 + `edit_crc_range`
+1. `oldText/newText` generic baseline
+2. pi built-in `edit` tool (`path`, `edits[].oldText`, `edits[].newText`)
+3. `read_tagged` + `edit_tagged`
+4. `read_hashline` + `edit_hashline_patch`
+5. `read_tagged` details.fileCrc32 + `edit_crc_range`
+
+`old_new` and `pi_edit` currently have the same payload shape, but are kept separate so real harness runs can distinguish generic exact replacement from pi's actual built-in tool behavior, rendering, retries, and diagnostics.
 
 Primary metrics:
 

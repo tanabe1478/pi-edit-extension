@@ -38,10 +38,12 @@ function compareScenario(name, text, start, end, newText) {
   const { lines } = splitLinesPreserveFinalNewline(text);
   const oldText = lines.slice(start - 1, end).join("\n");
   const oldNew = { path: "fixture.ts", edits: [{ oldText, newText }] };
+  const piEdit = { path: "fixture.ts", edits: [{ oldText, newText }] };
   const tagged = { path: "fixture.ts", edits: [{ lines: makeTaggedSpec(text, start, end), newText }] };
   const crc = { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText };
   const hashline = { input: makeHashlinePatch(text, start, end, newText) };
   const oldNewChars = estimateJsonChars(oldNew);
+  const piEditChars = estimateJsonChars(piEdit);
   const taggedChars = estimateJsonChars(tagged);
   const crcChars = estimateJsonChars(crc);
   const hashlineChars = estimateJsonChars(hashline);
@@ -49,13 +51,16 @@ function compareScenario(name, text, start, end, newText) {
     name,
     editedLines: end - start + 1,
     oldNewChars,
+    piEditChars,
     taggedChars,
     hashlineChars,
     crcChars,
+    piEditSavedPct: Number((((oldNewChars - piEditChars) / oldNewChars) * 100).toFixed(1)),
     taggedSavedPct: Number((((oldNewChars - taggedChars) / oldNewChars) * 100).toFixed(1)),
     hashlineSavedPct: Number((((oldNewChars - hashlineChars) / oldNewChars) * 100).toFixed(1)),
     crcSavedPct: Number((((oldNewChars - crcChars) / oldNewChars) * 100).toFixed(1)),
     oldNewTokensEst: estimateTokensFromChars(oldNewChars),
+    piEditTokensEst: estimateTokensFromChars(piEditChars),
     taggedTokensEst: estimateTokensFromChars(taggedChars),
     hashlineTokensEst: estimateTokensFromChars(hashlineChars),
     crcTokensEst: estimateTokensFromChars(crcChars),
@@ -73,13 +78,15 @@ const scenarios = [
 console.table(scenarios);
 const total = scenarios.reduce((acc, x) => {
   acc.oldNewChars += x.oldNewChars;
+  acc.piEditChars += x.piEditChars;
   acc.taggedChars += x.taggedChars;
   acc.hashlineChars += x.hashlineChars;
   acc.crcChars += x.crcChars;
   return acc;
-}, { oldNewChars: 0, taggedChars: 0, hashlineChars: 0, crcChars: 0 });
+}, { oldNewChars: 0, piEditChars: 0, taggedChars: 0, hashlineChars: 0, crcChars: 0 });
 console.log("TOTAL", {
   ...total,
+  piEditSavedPct: Number((((total.oldNewChars - total.piEditChars) / total.oldNewChars) * 100).toFixed(1)),
   taggedSavedPct: Number((((total.oldNewChars - total.taggedChars) / total.oldNewChars) * 100).toFixed(1)),
   hashlineSavedPct: Number((((total.oldNewChars - total.hashlineChars) / total.oldNewChars) * 100).toFixed(1)),
   crcSavedPct: Number((((total.oldNewChars - total.crcChars) / total.oldNewChars) * 100).toFixed(1)),
