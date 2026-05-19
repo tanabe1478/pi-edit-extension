@@ -1,0 +1,70 @@
+#!/usr/bin/env node
+import {
+  estimateJsonChars,
+  estimateTokensFromChars,
+  formatTagged,
+  splitLinesPreserveFinalNewline,
+  tagFor,
+} from "../src/core.mjs";
+
+function makeFixture(lines) {
+  const out = [];
+  for (let i = 1; i <= lines; i++) {
+    if (i % 7 === 0) out.push(`  if (items[${i}].enabled && limit > ${i}) { total += compute(items[${i}], limit); }`);
+    else if (i % 5 === 0) out.push(`  const value_${i} = normalize(input.value_${i} ?? defaultValue);`);
+    else out.push(`  // filler line ${i} with moderately long context and indentation`);
+  }
+  return out.join("\n") + "\n";
+}
+
+function makeTaggedSpec(text, start, end, tagChars = 4) {
+  const { lines } = splitLinesPreserveFinalNewline(text);
+  const specs = [];
+  for (let n = start; n <= end; n++) specs.push(`${n}:${tagFor(lines[n - 1], tagChars)}`);
+  return specs.join("\n");
+}
+
+function compareScenario(name, text, start, end, newText) {
+  const { lines } = splitLinesPreserveFinalNewline(text);
+  const oldText = lines.slice(start - 1, end).join("\n");
+  const oldNew = { path: "fixture.ts", edits: [{ oldText, newText }] };
+  const tagged = { path: "fixture.ts", edits: [{ lines: makeTaggedSpec(text, start, end), newText }] };
+  const crc = { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText };
+  const oldNewChars = estimateJsonChars(oldNew);
+  const taggedChars = estimateJsonChars(tagged);
+  const crcChars = estimateJsonChars(crc);
+  return {
+    name,
+    editedLines: end - start + 1,
+    oldNewChars,
+    taggedChars,
+    crcChars,
+    taggedSavedPct: Number((((oldNewChars - taggedChars) / oldNewChars) * 100).toFixed(1)),
+    crcSavedPct: Number((((oldNewChars - crcChars) / oldNewChars) * 100).toFixed(1)),
+    oldNewTokensEst: estimateTokensFromChars(oldNewChars),
+    taggedTokensEst: estimateTokensFromChars(taggedChars),
+    crcTokensEst: estimateTokensFromChars(crcChars),
+  };
+}
+
+const fixture = makeFixture(240);
+const scenarios = [
+  compareScenario("one-line replacement", fixture, 10, 10, "  const value_10 = normalizeFast(input.value_10);") ,
+  compareScenario("small block replacement", fixture, 35, 39, "  total += computeWindow(items, 35, 39, limit);"),
+  compareScenario("large deletion", fixture, 80, 139, ""),
+  compareScenario("large replacement", fixture, 150, 220, "  return summarize(items, limit);"),
+];
+
+console.table(scenarios);
+const total = scenarios.reduce((acc, x) => {
+  acc.oldNewChars += x.oldNewChars;
+  acc.taggedChars += x.taggedChars;
+  acc.crcChars += x.crcChars;
+  return acc;
+}, { oldNewChars: 0, taggedChars: 0, crcChars: 0 });
+console.log("TOTAL", {
+  ...total,
+  taggedSavedPct: Number((((total.oldNewChars - total.taggedChars) / total.oldNewChars) * 100).toFixed(1)),
+  crcSavedPct: Number((((total.oldNewChars - total.crcChars) / total.oldNewChars) * 100).toFixed(1)),
+});
+console.log("\nSample read_tagged output:\n" + formatTagged(fixture, { offset: 35, limit: 5 }).text);

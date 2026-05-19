@@ -1,0 +1,21 @@
+{
+  "name": "pi-tagged-edit-extension",
+  "version": "0.1.0",
+  "description": "Experimental pi extension for checksum-tagged line edits and edit efficiency benchmarks.",
+  "type": "module",
+  "private": true,
+  "pi": {
+    "extensions": ["./src/index.ts"]
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "bench": "node bench/bench.mjs",
+    "scan:secrets": "gitleaks detect --source . --verbose --redact"
+  },
+  "keywords": ["pi", "extension", "llm", "edit", "checksum", "benchmark"],
+  "license": "MIT",
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "^0.75.3",
+    "typebox": "^1.0.55"
+  }
+}

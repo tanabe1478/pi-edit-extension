@@ -1,0 +1,26 @@
+# dependencies
+node_modules/
+
+# build/test outputs
+dist/
+build/
+coverage/
+*.log
+
+# local secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# credentials / keys
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa
+id_ed25519
+
+# local files
+.DS_Store
+.pi-tagged-edit-metrics.jsonl
