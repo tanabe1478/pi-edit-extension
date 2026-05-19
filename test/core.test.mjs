@@ -5,6 +5,7 @@ import {
   formatHashlineAnchor,
   formatTagged,
   parseTaggedLines,
+  recoverHashlinePatchFromSnapshot,
   splitLinesPreserveFinalNewline,
   tagFor,
   validateAndApplyHashlinePatch,
@@ -73,4 +74,14 @@ test("hashline patch replaces and inserts by anchors", () => {
 test("hashline patch rejects stale anchors", () => {
   const stale = formatHashlineAnchor(1, "old");
   assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n- ${stale}..${stale}`), /Edit rejected/);
+});
+
+test("hashline recovery applies cached edit across unrelated current changes", () => {
+  const snapshot = "a\nb\nc\n";
+  const current = "intro\na\nb\nc\n";
+  const anchor = formatHashlineAnchor(2, "b");
+  const patch = `@@ file.txt\n= ${anchor}..${anchor}\n~B`;
+  const res = recoverHashlinePatchFromSnapshot(snapshot, current, patch);
+  assert.equal(res.text, "intro\na\nB\nc\n");
+  assert.equal(res.recovered, true);
 });

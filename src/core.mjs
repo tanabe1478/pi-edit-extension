@@ -269,6 +269,83 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
   return { text: joinLines(out, parsed.finalNewline, parsed.eol), ops };
 }
 
+export function diffLineRange(beforeText, afterText) {
+  const before = splitLinesPreserveFinalNewline(beforeText).lines;
+  const after = splitLinesPreserveFinalNewline(afterText).lines;
+  let prefix = 0;
+  while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix++;
+  let beforeSuffix = before.length - 1;
+  let afterSuffix = after.length - 1;
+  while (beforeSuffix >= prefix && afterSuffix >= prefix && before[beforeSuffix] === after[afterSuffix]) {
+    beforeSuffix--;
+    afterSuffix--;
+  }
+  return {
+    start: prefix,
+    oldEnd: beforeSuffix + 1,
+    newEnd: afterSuffix + 1,
+    oldLines: before.slice(prefix, beforeSuffix + 1),
+    newLines: after.slice(prefix, afterSuffix + 1),
+  };
+}
+
+function findSubsequence(haystack, needle) {
+  if (needle.length === 0) return [];
+  const hits = [];
+  outer: for (let i = 0; i <= haystack.length - needle.length; i++) {
+    for (let j = 0; j < needle.length; j++) if (haystack[i + j] !== needle[j]) continue outer;
+    hits.push(i);
+  }
+  return hits;
+}
+
+function findInsertionIndex(snapshotLines, currentLines, start) {
+  const prev = start > 0 ? snapshotLines[start - 1] : undefined;
+  const next = start < snapshotLines.length ? snapshotLines[start] : undefined;
+  if (prev !== undefined) {
+    const hits = findSubsequence(currentLines, [prev]);
+    if (hits.length === 1) return hits[0] + 1;
+  }
+  if (next !== undefined) {
+    const hits = findSubsequence(currentLines, [next]);
+    if (hits.length === 1) return hits[0];
+  }
+  return undefined;
+}
+
+export function recoverHashlinePatchFromSnapshot(snapshotText, currentText, patch, opts = {}) {
+  const desired = validateAndApplyHashlinePatch(snapshotText, patch, opts).text;
+  const change = diffLineRange(snapshotText, desired);
+  const snapshot = splitLinesPreserveFinalNewline(snapshotText);
+  const current = splitLinesPreserveFinalNewline(currentText);
+  let replaceStart;
+  let replaceDeleteCount;
+
+  if (change.oldLines.length > 0) {
+    const hits = findSubsequence(current.lines, change.oldLines);
+    if (hits.length !== 1) {
+      throw new Error(`Recovery failed: changed old segment matched ${hits.length} locations in current file`);
+    }
+    replaceStart = hits[0];
+    replaceDeleteCount = change.oldLines.length;
+  } else {
+    const idx = findInsertionIndex(snapshot.lines, current.lines, change.start);
+    if (idx === undefined) throw new Error("Recovery failed: insertion anchor is ambiguous in current file");
+    replaceStart = idx;
+    replaceDeleteCount = 0;
+  }
+
+  const out = current.lines.slice();
+  out.splice(replaceStart, replaceDeleteCount, ...change.newLines);
+  return {
+    text: joinLines(out, current.finalNewline, current.eol),
+    recovered: true,
+    changedOldLines: change.oldLines.length,
+    changedNewLines: change.newLines.length,
+    currentStartLine: replaceStart + 1,
+  };
+}
+
 export function validateAndApplyTaggedEdits(text, edits, opts = {}) {
   const { tagChars = 4, saltMode = "none" } = opts;
   const parsed = splitLinesPreserveFinalNewline(text);

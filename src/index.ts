@@ -9,9 +9,11 @@ import {
   formatHashline,
   formatHashlineLine,
   formatTagged,
+  HashlineMismatchError,
   resolveUserPath,
   splitLinesPreserveFinalNewline,
   tagFor,
+  recoverHashlinePatchFromSnapshot,
   validateAndApplyHashlinePatch,
   validateAndApplyTaggedEdits,
 } from "./core.mjs";
@@ -21,6 +23,7 @@ const METRICS_ENV = "PI_TAGGED_EDIT_METRICS";
 type SaltMode = "none" | "line";
 
 export default function taggedEditExtension(pi: ExtensionAPI) {
+  const hashlineSnapshots = new Map<string, string>();
   pi.registerTool({
     name: "read_tagged",
     label: "Read tagged",
@@ -80,6 +83,7 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
     async execute(_toolCallId, params) {
       const p = resolveUserPath(params.path);
       const fileText = await fs.readFile(p, "utf8");
+      hashlineSnapshots.set(p, fileText);
       const result = formatHashline(fileText, { offset: params.offset, limit: params.limit });
       await appendMetric(process.env[METRICS_ENV], {
         tool: "read_hashline",
@@ -140,6 +144,7 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
         let text: string;
         try { text = await fs.readFile(file, "utf8"); } catch { continue; }
         if (text.includes("\0")) continue;
+        hashlineSnapshots.set(file, text);
         const fileLines = splitLinesPreserveFinalNewline(text).lines;
         const selected = new Set<number>();
         for (let i = 0; i < fileLines.length; i++) {
@@ -246,14 +251,24 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
         const target = header.replace(/^@@\s*/, "").trim();
         const p = resolveUserPath(target);
         const before = await fs.readFile(p, "utf8");
-        const result = validateAndApplyHashlinePatch(before, section, { payloadSep: params.payloadSep ?? "~" });
+        let result;
+        let recovered = false;
+        try {
+          result = validateAndApplyHashlinePatch(before, section, { payloadSep: params.payloadSep ?? "~" });
+        } catch (err) {
+          if (!(err instanceof HashlineMismatchError) || !hashlineSnapshots.has(p)) throw err;
+          result = recoverHashlinePatchFromSnapshot(hashlineSnapshots.get(p) as string, before, section, { payloadSep: params.payloadSep ?? "~" });
+          recovered = true;
+        }
         await fs.writeFile(p, result.text, "utf8");
-        results.push({ path: p, ops: result.ops.length });
+        hashlineSnapshots.set(p, result.text);
+        results.push({ path: p, ops: result.ops?.length ?? 0, recovered });
       }
       await appendMetric(process.env[METRICS_ENV], {
         tool: "edit_hashline_patch",
         sections: results.length,
         ops: results.reduce((sum, r) => sum + r.ops, 0),
+        recovered: results.some((r) => r.recovered),
         inputChars: estimateJsonChars(params),
         inputTokenEstimate: estimateTokensFromChars(estimateJsonChars(params)),
       });

@@ -170,7 +170,7 @@ npm test
 - Edits are whole-line only.
 - Tags are short CRC32-derived prefixes, so collisions are possible.
 - `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list and uses a Node-compatible xxHash32 implementation matching `Bun.hash.xxHash32(input, 0)`.
-- The hashline patch parser is intentionally small and lacks oh-my-pi recovery, duplicate-boundary absorption, LSP writethrough, and streaming preview.
+- The hashline patch parser has read/search snapshot recovery for simple stale-anchor cases, but still lacks oh-my-pi's richer duplicate-boundary absorption, LSP writethrough, and streaming preview.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
 
 ## Experiment plan
@@ -194,7 +194,7 @@ Primary metrics:
 
 - model output chars/tokens spent on edit calls
 - edit success rate
-- stale-anchor rejection rate
+- stale-anchor rejection/recovery rate
 - retry count per task
 - task success rate
 
