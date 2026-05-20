@@ -99,7 +99,7 @@ export function createClient(options = {}) {
 ];
 
 function parseArgs(argv) {
-  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "codex_patch"], timeout: 240, task: null, limit: null };
+  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "hybrid_hashline_tagged", "codex_patch"], timeout: 240, task: null, limit: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") args.out = argv[++i];
@@ -128,6 +128,7 @@ function promptFor(mode, task) {
   if (mode === "pi_edit") return common + "Use only built-in read and edit tools.\n";
   if (mode === "tagged") return common + "Use only read_tagged and edit_tagged for file modifications.\n";
   if (mode === "hashline_range") return common + "Use only read_hashline and edit_hashline_range for file modifications. Copy anchors exactly, including :tag when present.\n";
+  if (mode === "hybrid_hashline_tagged") return common + "For file modifications, prefer read_hashline + edit_hashline_range for line-oriented edits. If hashline anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Do not use built-in edit.\n";
   if (mode === "codex_patch") return common + "Use only read and edit_codex_patch for file modifications.\n";
   throw new Error(mode);
 }
@@ -137,6 +138,7 @@ function commandFor(mode, promptFile) {
   if (mode === "pi_edit") return { cmd: "pi", args: [...basePi, "--tools", "read,edit,bash"] };
   if (mode === "tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_tagged,bash"] };
   if (mode === "hashline_range") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,bash"] };
+  if (mode === "hybrid_hashline_tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,read_tagged,edit_tagged,bash"] };
   if (mode === "codex_patch") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,edit_codex_patch,bash"] };
   throw new Error(mode);
 }
@@ -154,7 +156,7 @@ function compareFiles(dir, expectedFiles) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,codex_patch] [--task ID] [--limit N] [--timeout SEC]");
+    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,hybrid_hashline_tagged,codex_patch] [--task ID] [--limit N] [--timeout SEC]");
     return;
   }
   let selected = tasks;
