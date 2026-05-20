@@ -214,9 +214,15 @@ Fallback policy stress benchmark:
 npm run bench:fallback
 ```
 
+Agent-level fallback benchmark:
+
+```bash
+npm run bench:fallback-agent
+```
+
 Historical notes and current benchmark interpretation are in [`docs/benchmark-history.md`](docs/benchmark-history.md).
 
-Product-level and natural-use eval planning is in [`docs/product-eval-plan.md`](docs/product-eval-plan.md). Natural-use validation results are tracked in [`docs/natural-use-results.md`](docs/natural-use-results.md), with structured range follow-up in [`docs/hashline-range-results.md`](docs/hashline-range-results.md) and the 43-task natural-use run in [`docs/natural-use-43-results.md`](docs/natural-use-43-results.md). Product-level runner notes are in [`docs/product-runner.md`](docs/product-runner.md), with first results in [`docs/product-runner-results.md`](docs/product-runner-results.md), hybrid policy results in [`docs/hybrid-tool-policy-results.md`](docs/hybrid-tool-policy-results.md), and fallback stress results in [`docs/fallback-stress-results.md`](docs/fallback-stress-results.md). An initial natural-use runner is available:
+Product-level and natural-use eval planning is in [`docs/product-eval-plan.md`](docs/product-eval-plan.md). Natural-use validation results are tracked in [`docs/natural-use-results.md`](docs/natural-use-results.md), with structured range follow-up in [`docs/hashline-range-results.md`](docs/hashline-range-results.md) and the 43-task natural-use run in [`docs/natural-use-43-results.md`](docs/natural-use-43-results.md). Product-level runner notes are in [`docs/product-runner.md`](docs/product-runner.md), with first results in [`docs/product-runner-results.md`](docs/product-runner-results.md), hybrid policy results in [`docs/hybrid-tool-policy-results.md`](docs/hybrid-tool-policy-results.md), fallback stress results in [`docs/fallback-stress-results.md`](docs/fallback-stress-results.md), and agent fallback results in [`docs/fallback-agent-results.md`](docs/fallback-agent-results.md). An initial natural-use runner is available:
 
 ```bash
 npm run bench:natural -- --out /tmp/pi-edit-natural --modes pi_edit,tagged,hashline,hashline_range --limit 3
