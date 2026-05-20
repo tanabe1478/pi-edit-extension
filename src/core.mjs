@@ -88,12 +88,44 @@ export function hashlineHash(line) {
   return HASHLINE_BIGRAMS[xxHash32(normalized, 0) % HASHLINE_BIGRAMS.length];
 }
 
-export function formatHashlineAnchor(lineNumber, line) {
-  return `${lineNumber}${hashlineHash(line)}`;
+export function strictHashlineTag(line, chars = 4) {
+  return tagFor(line.replace(/\r/g, "").trimEnd(), chars);
 }
 
-export function formatHashlineLine(lineNumber, line) {
-  return `${formatHashlineAnchor(lineNumber, line)}|${line}`;
+export function formatHashlineAnchor(lineNumber, line, opts = {}) {
+  const base = `${lineNumber}${hashlineHash(line)}`;
+  return opts.strict ? `${base}:${strictHashlineTag(line, opts.strictChars ?? 4)}` : base;
+}
+
+export function formatHashlineLine(lineNumber, line, opts = {}) {
+  return `${formatHashlineAnchor(lineNumber, line, opts)}|${line}`;
+}
+
+export function analyzeHashlineStrictLines(lines, opts = {}) {
+  const mode = opts.strictMode ?? "auto";
+  const strict = new Set();
+  if (mode === "none") return strict;
+  if (mode === "all") {
+    for (let i = 1; i <= lines.length; i++) strict.add(i);
+    return strict;
+  }
+  const hashCounts = new Map();
+  const textCounts = new Map();
+  for (const line of lines) {
+    hashCounts.set(hashlineHash(line), (hashCounts.get(hashlineHash(line)) ?? 0) + 1);
+    const normalized = line.replace(/\r/g, "").trimEnd();
+    textCounts.set(normalized, (textCounts.get(normalized) ?? 0) + 1);
+  }
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const normalized = line.replace(/\r/g, "").trimEnd();
+    const content = normalized.trim();
+    const lowInformation = content.length <= 2 || /^[{}()[\],.;:]*$/.test(content);
+    const repeatedText = (textCounts.get(normalized) ?? 0) > 1;
+    const collidedHash = (hashCounts.get(hashlineHash(line)) ?? 0) > 1;
+    if (lowInformation || repeatedText || collidedHash) strict.add(i + 1);
+  }
+  return strict;
 }
 
 export function expandPath(p) {
@@ -147,21 +179,33 @@ export function formatTagged(text, opts = {}) {
 }
 
 export function formatHashline(text, opts = {}) {
-  const { offset = 1, limit } = opts;
+  const { offset = 1, limit, strictMode = "auto", strictChars = 4 } = opts;
   const { lines } = splitLinesPreserveFinalNewline(text);
+  const strictLines = analyzeHashlineStrictLines(lines, { strictMode });
   const start = Math.max(1, offset);
   const end = Math.min(lines.length, limit ? start + limit - 1 : lines.length);
   const out = [];
-  for (let n = start; n <= end; n++) out.push(formatHashlineLine(n, lines[n - 1] ?? ""));
-  return { text: out.join("\n"), start, end, totalLines: lines.length };
+  for (let n = start; n <= end; n++) out.push(formatHashlineLine(n, lines[n - 1] ?? "", { strict: strictLines.has(n), strictChars }));
+  return { text: out.join("\n"), start, end, totalLines: lines.length, strictLines: [...strictLines] };
+}
+
+export function formatHashlineRangeAnchors(text, start, end, opts = {}) {
+  const { strictMode = "auto", strictChars = 4, forceStrict = false } = opts;
+  const { lines } = splitLinesPreserveFinalNewline(text);
+  const strictLines = analyzeHashlineStrictLines(lines, { strictMode });
+  const useStrict = (n) => forceStrict || strictLines.has(n);
+  return {
+    startAnchor: formatHashlineAnchor(start, lines[start - 1] ?? "", { strict: useStrict(start), strictChars }),
+    endAnchor: formatHashlineAnchor(end, lines[end - 1] ?? "", { strict: useStrict(end), strictChars }),
+  };
 }
 
 export function parseHashlineAnchor(anchor) {
   const trimmed = String(anchor).trim();
   if (trimmed === "BOF" || trimmed === "EOF") return { special: trimmed };
-  const m = /^(\d+)([a-z]{2})$/.exec(trimmed);
+  const m = /^(\d+)([a-z]{2})(?::([A-Za-z0-9_-]{4,8}))?$/.exec(trimmed);
   if (!m) throw new Error(`Invalid hashline anchor: ${anchor}`);
-  return { line: Number(m[1]), hash: m[2] };
+  return { line: Number(m[1]), hash: m[2], strict: m[3] };
 }
 
 export class HashlineMismatchError extends Error {
@@ -200,6 +244,10 @@ function validateHashlineAnchor(anchor, lines, mismatches) {
   if (actual === undefined) throw new Error(`Line ${parsed.line} is outside file`);
   const actualHash = hashlineHash(actual);
   if (actualHash !== parsed.hash) mismatches.push({ line: parsed.line, expected: parsed.hash, actual: actualHash });
+  if (parsed.strict) {
+    const actualStrict = strictHashlineTag(actual, parsed.strict.length);
+    if (actualStrict !== parsed.strict) mismatches.push({ line: parsed.line, expected: `${parsed.hash}:${parsed.strict}`, actual: `${actualHash}:${actualStrict}` });
+  }
   return parsed;
 }
 
@@ -235,6 +283,10 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
       const b = validateHashlineAnchor(m[2], parsed.lines, mismatches);
       if (a.special || b.special) throw new Error(`Range anchors must be concrete lines: ${raw}`);
       if (a.line > b.line) throw new Error(`Range start must be <= end: ${raw}`);
+      const destructiveOrWide = op === "-" || b.line - a.line + 1 >= (opts.strictRangeThreshold ?? 20);
+      if (destructiveOrWide && (!a.strict || !b.strict)) {
+        throw new Error(`Strict anchors required for destructive or wide range edits (${raw}). Re-read with strictMode=auto/all and copy anchors including :tag.`);
+      }
       const payload = op === "=" ? parsePayload(patchLines, i, payloadSep) : { payload: [], next: i };
       i = payload.next;
       ops.push({ kind: op === "-" ? "delete" : "replace", start: a.line, end: b.line, payload: payload.payload });

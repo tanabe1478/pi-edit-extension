@@ -4,7 +4,7 @@ import * as path from "node:path";
 import {
   estimateJsonChars,
   estimateTokensFromChars,
-  formatHashlineAnchor,
+  formatHashlineRangeAnchors,
   splitLinesPreserveFinalNewline,
   tagFor,
 } from "../src/core.mjs";
@@ -38,9 +38,8 @@ function taggedSpec(text, start, end, tagChars = 4) {
 }
 
 function hashlinePatch(text, start, end, newText, op = "replace") {
-  const { lines } = splitLinesPreserveFinalNewline(text);
-  const a = formatHashlineAnchor(start, lines[start - 1]);
-  const b = formatHashlineAnchor(end, lines[end - 1]);
+  const forceStrict = op === "delete" || end - start + 1 >= 20;
+  const { startAnchor: a, endAnchor: b } = formatHashlineRangeAnchors(text, start, end, { strictMode: "auto", forceStrict });
   if (op === "delete") return `@@ fixture.ts\n- ${a}..${b}`;
   const payload = newText.length ? "\n" + newText.split("\n").map((line) => `~${line}`).join("\n") : "";
   return `@@ fixture.ts\n= ${a}..${b}${payload}`;

@@ -23,7 +23,21 @@ Reads a file using an oh-my-pi-style compact anchor format:
 42sr|function hi() {
 ```
 
-The anchor is `42sr`: line number plus a 2-letter content hash. This implementation matches oh-my-pi's anchor algorithm: trim trailing whitespace, remove CR, hash with xxHash32 seed 0, then map into the curated 647-entry single-token bigram table.
+The normal anchor is `42sr`: line number plus a 2-letter content hash. This implementation matches oh-my-pi's anchor algorithm: trim trailing whitespace, remove CR, hash with xxHash32 seed 0, then map into the curated 647-entry single-token bigram table.
+
+By default `read_hashline` uses deterministic adaptive strict anchors. Safe-looking lines stay compact:
+
+```text
+42sr|const value = 1;
+```
+
+Risky lines get an additional checksum:
+
+```text
+43ab:Q8fA|}
+```
+
+Strict anchors are emitted deterministically for low-information lines, repeated lines, and lines whose 2-character hash collides in the file. Destructive or wide range edits require strict range endpoints.
 
 ### `search_hashline`
 
@@ -171,7 +185,7 @@ npm test
 - Tags are short CRC32-derived prefixes, so collisions are possible.
 - `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list and uses a Node-compatible xxHash32 implementation matching `Bun.hash.xxHash32(input, 0)`.
 - The hashline patch parser has read/search snapshot recovery for simple stale-anchor cases, but still lacks oh-my-pi's richer duplicate-boundary absorption, LSP writethrough, and streaming preview.
-- A 2-character hashline anchor can false-accept if the same line number changes to different content with the same 2-letter hash. This is documented by a regression test (`documents 2-char hashline false-accept collision risk`) and should be considered when evaluating production safety tradeoffs.
+- A plain 2-character hashline anchor can false-accept if the same line number changes to different content with the same 2-letter hash. This is documented by a regression test (`documents 2-char hashline false-accept collision risk`). Adaptive strict anchors mitigate this for deterministic high-risk cases while preserving compact anchors for safe-looking lines.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
 
 ## Experiment plan

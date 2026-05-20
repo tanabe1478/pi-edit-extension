@@ -79,18 +79,20 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
       path: Type.String({ description: "File path, relative to current working directory or absolute" }),
       offset: Type.Optional(Type.Number({ description: "1-indexed start line", minimum: 1 })),
       limit: Type.Optional(Type.Number({ description: "Maximum number of lines", minimum: 1 })),
+      strictMode: Type.Optional(Type.Union([Type.Literal("auto"), Type.Literal("none"), Type.Literal("all")], { description: "Adaptive strict anchor mode; default auto" })),
     }),
     async execute(_toolCallId, params) {
       const p = resolveUserPath(params.path);
       const fileText = await fs.readFile(p, "utf8");
       hashlineSnapshots.set(p, fileText);
-      const result = formatHashline(fileText, { offset: params.offset, limit: params.limit });
+      const result = formatHashline(fileText, { offset: params.offset, limit: params.limit, strictMode: params.strictMode ?? "auto" });
       await appendMetric(process.env[METRICS_ENV], {
         tool: "read_hashline",
         path: p,
         linesReturned: result.end >= result.start ? result.end - result.start + 1 : 0,
         resultChars: result.text.length,
         resultTokenEstimate: estimateTokensFromChars(result.text.length),
+        strictAnchors: result.strictLines?.filter((n: number) => n >= result.start && n <= result.end).length ?? 0,
       });
       return {
         content: [{ type: "text", text: result.text }],
@@ -99,7 +101,7 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
           start: result.start,
           end: result.end,
           totalLines: result.totalLines,
-          hashShape: "LINEhh|TEXT",
+          hashShape: "LINEhh[:tag]|TEXT",
           fileCrc32: crc32(fileText).toString(16).padStart(8, "0"),
         },
       };

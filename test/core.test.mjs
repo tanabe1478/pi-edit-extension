@@ -57,9 +57,11 @@ test("xxHash32 matches Bun.hash.xxHash32 reference values", () => {
   assert.equal(xxHash32("hello", 0), 4211111929);
 });
 
-test("formatHashline emits compact LINEhh pipe format", () => {
+test("formatHashline emits adaptive strict LINEhh[:tag] pipe format", () => {
   const res = formatHashline("a\nb\n");
-  assert.match(res.text, /^1[a-z]{2}\|a\n2[a-z]{2}\|b$/);
+  assert.match(res.text, /^1[a-z]{2}:[A-Za-z0-9_-]{4}\|a\n2[a-z]{2}:[A-Za-z0-9_-]{4}\|b$/);
+  const compact = formatHashline("long enough unique line\nanother unique line\n", { strictMode: "none" });
+  assert.match(compact.text, /^1[a-z]{2}\|long enough unique line\n2[a-z]{2}\|another unique line$/);
 });
 
 test("hashline patch replaces and inserts by anchors", () => {
@@ -73,7 +75,7 @@ test("hashline patch replaces and inserts by anchors", () => {
 
 test("hashline patch rejects stale anchors", () => {
   const stale = formatHashlineAnchor(1, "old");
-  assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n- ${stale}..${stale}`), /Edit rejected/);
+  assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n= ${stale}..${stale}\n~replacement`), /Edit rejected/);
 });
 
 test("documents 2-char hashline false-accept collision risk", () => {
@@ -84,6 +86,22 @@ test("documents 2-char hashline false-accept collision risk", () => {
   const patch = `@@ file.txt\n= ${oldAnchor}..${oldAnchor}\n~patched`;
   const res = validateAndApplyHashlinePatch(`${collidingCurrentLine}\n`, patch);
   assert.equal(res.text, "patched\n");
+});
+
+test("strict hashline anchor rejects 2-char false-accept collision", () => {
+  const oldLine = "collision candidate 8";
+  const collidingCurrentLine = "collision candidate 35";
+  const strictAnchor = formatHashlineAnchor(1, oldLine, { strict: true });
+  assert.match(strictAnchor, /^1[a-z]{2}:[A-Za-z0-9_-]{4}$/);
+  const patch = `@@ file.txt\n= ${strictAnchor}..${strictAnchor}\n~patched`;
+  assert.throws(() => validateAndApplyHashlinePatch(`${collidingCurrentLine}\n`, patch), /Edit rejected/);
+});
+
+test("wide destructive hashline ranges require strict anchors", () => {
+  const text = Array.from({ length: 25 }, (_, i) => `line ${i + 1}`).join("\n") + "\n";
+  const a = formatHashlineAnchor(1, "line 1");
+  const b = formatHashlineAnchor(25, "line 25");
+  assert.throws(() => validateAndApplyHashlinePatch(text, `@@ file.txt\n- ${a}..${b}`), /Strict anchors required/);
 });
 
 test("hashline recovery applies cached edit across unrelated current changes", () => {
