@@ -153,6 +153,21 @@ function compareFiles(dir, expectedFiles) {
   return diffs;
 }
 
+function summarizeToolIo(records) {
+  const out = { toolCalls: records.length, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0 };
+  for (const r of records) {
+    const tool = r.tool || "";
+    const resultChars = r.resultChars || 0;
+    const inputChars = r.inputChars || r.taggedInputChars || 0;
+    if (tool.startsWith("read") || tool === "search_hashline") out.readCalls++;
+    if (tool.startsWith("edit")) out.editCalls++;
+    out.readResultChars += resultChars;
+    out.editInputChars += inputChars;
+    out.totalToolIoChars += resultChars + inputChars;
+  }
+  return out;
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -183,7 +198,8 @@ async function main() {
       const exact = diffs.length === 0;
       const checksPass = check.status === 0;
       const productSuccess = res.status === 0 && checksPass;
-      const record = { mode, task: task.id, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
+      const toolIo = summarizeToolIo(metricRecords);
+      const record = { mode, task: task.id, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
       results.push(record);
       await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
       console.log(JSON.stringify(record));
@@ -191,15 +207,20 @@ async function main() {
   }
   const summary = {};
   for (const r of results) {
-    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0 };
+    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0 };
     summary[r.mode].total++;
     if (r.success) summary[r.mode].success++;
     if (r.product_success) summary[r.mode].product_success++;
     if (r.exact) summary[r.mode].exact++;
     if (r.checks_pass) summary[r.mode].checks_pass++;
     summary[r.mode].duration_ms += r.duration_ms;
+    for (const key of ["toolCalls", "readCalls", "editCalls", "readResultChars", "editInputChars", "totalToolIoChars"]) summary[r.mode][key] += r.toolIo?.[key] || 0;
   }
-  for (const s of Object.values(summary)) s.avg_duration_ms = Math.round(s.duration_ms / s.total);
+  for (const s of Object.values(summary)) {
+    s.avg_duration_ms = Math.round(s.duration_ms / s.total);
+    s.avgToolIoChars = Math.round(s.totalToolIoChars / s.total);
+    s.avgToolCalls = Number((s.toolCalls / s.total).toFixed(1));
+  }
   await fsp.writeFile(path.join(args.out, "actual-results.json"), JSON.stringify({ summary, results }, null, 2));
   console.log(JSON.stringify({ out: args.out, summary }, null, 2));
 }
