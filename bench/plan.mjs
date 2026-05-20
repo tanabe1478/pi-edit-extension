@@ -37,9 +37,9 @@ function taggedSpec(text, start, end, tagChars = 4) {
   }).join("\n");
 }
 
-function hashlinePatch(text, start, end, newText, op = "replace") {
-  const forceStrict = op === "delete" || end - start + 1 >= 20;
-  const { startAnchor: a, endAnchor: b } = formatHashlineRangeAnchors(text, start, end, { strictMode: "auto", forceStrict });
+function hashlinePatch(text, start, end, newText, op = "replace", opts = {}) {
+  const forceStrict = opts.forceStrict ?? (op === "delete" || end - start + 1 >= 20);
+  const { startAnchor: a, endAnchor: b } = formatHashlineRangeAnchors(text, start, end, { strictMode: opts.strictMode ?? "auto", forceStrict });
   if (op === "delete") return `@@ fixture.ts\n- ${a}..${b}`;
   const payload = newText.length ? "\n" + newText.split("\n").map((line) => `~${line}`).join("\n") : "";
   return `@@ fixture.ts\n= ${a}..${b}${payload}`;
@@ -55,6 +55,7 @@ function scenario(name, text, start, end, newText) {
     old_new: { path: "fixture.ts", edits: [{ oldText, newText }] },
     pi_edit: piEdit,
     tagged: { path: "fixture.ts", edits: [{ lines: taggedSpec(text, start, end), newText }] },
+    hashline_legacy: { input: hashlinePatch(text, start, end, newText, op, { strictMode: "none", forceStrict: false }) },
     hashline: { input: hashlinePatch(text, start, end, newText, op) },
     crc: { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText },
   };

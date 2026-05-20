@@ -75,7 +75,8 @@ function buildReport(dir) {
   const metricSummary = summarizeMetrics(metrics);
   const metricRows = Object.entries(metricSummary).map(([tool, m]) => [tool, m.calls, m.inputChars, m.resultChars, m.savedCharsEstimate, m.recovered]);
 
-  const taskRows = (plan.scenarios || []).map((s) => [s.name, s.edited_lines, s.metrics?.old_new?.chars, s.metrics?.pi_edit?.chars, s.metrics?.tagged?.chars, s.metrics?.hashline?.chars, s.metrics?.crc?.chars]);
+  const taskModes = [...new Set((plan.scenarios || []).flatMap((s) => Object.keys(s.metrics || {})))];
+  const taskRows = (plan.scenarios || []).map((s) => [s.name, s.edited_lines, ...taskModes.map((mode) => s.metrics?.[mode]?.chars)]);
 
   const lines = [];
   lines.push(`# pi-edit-extension benchmark report`);
@@ -89,7 +90,7 @@ function buildReport(dir) {
   lines.push("");
   lines.push(`## Scenario payload sizes`);
   lines.push("");
-  lines.push(table(["scenario", "lines", "old_new", "pi_edit", "tagged", "hashline", "crc"], taskRows));
+  lines.push(table(["scenario", "lines", ...taskModes], taskRows));
   lines.push("");
   lines.push(`## Actual harness run results`);
   lines.push("");

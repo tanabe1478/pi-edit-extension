@@ -284,7 +284,7 @@ export function validateAndApplyHashlinePatch(text, patch, opts = {}) {
       if (a.special || b.special) throw new Error(`Range anchors must be concrete lines: ${raw}`);
       if (a.line > b.line) throw new Error(`Range start must be <= end: ${raw}`);
       const destructiveOrWide = op === "-" || b.line - a.line + 1 >= (opts.strictRangeThreshold ?? 20);
-      if (destructiveOrWide && (!a.strict || !b.strict)) {
+      if (opts.requireStrictRanges !== false && destructiveOrWide && (!a.strict || !b.strict)) {
         throw new Error(`Strict anchors required for destructive or wide range edits (${raw}). Re-read with strictMode=auto/all and copy anchors including :tag.`);
       }
       const payload = op === "=" ? parsePayload(patchLines, i, payloadSep) : { payload: [], next: i };
