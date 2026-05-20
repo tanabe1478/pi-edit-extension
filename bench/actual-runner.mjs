@@ -12,7 +12,7 @@ function parseArgs(argv) {
   const args = {
     out: path.join(ROOT, ".actual-runs", new Date().toISOString().replace(/[:.]/g, "-")),
     ohMyPiDir: process.env.OH_MY_PI_DIR || "/tmp/oh-my-pi-bench",
-    modes: ["pi_edit", "tagged", "hashline_legacy", "hashline", "crc"],
+    modes: ["pi_edit", "tagged", "codex_patch", "hashline_legacy", "hashline", "crc"],
     includeOhMyPi: false,
     timeout: 180,
   };
@@ -36,6 +36,7 @@ function promptFor(mode, scenario) {
   const common = `You are editing fixture.ts. Complete exactly this task and do not make unrelated changes.\nScenario: ${scenario.name}\nTarget lines in the original fixture: ${scenario.start}-${scenario.end}.\n`;
   if (mode === "pi_edit") return common + `Use pi's built-in edit tool only. Do not use extension tools. Built-in pi edit payload:\n${JSON.stringify(scenario.payloads.pi_edit, null, 2)}\n`;
   if (mode === "tagged") return common + `Use read_tagged/edit_tagged only. edit_tagged payload:\n${JSON.stringify(scenario.payloads.tagged, null, 2)}\n`;
+  if (mode === "codex_patch") return common + `Use edit_codex_patch only. Codex apply_patch payload:\n${scenario.payloads.codex_patch.input}\n`;
   if (mode === "hashline_legacy") return common + `Use read_hashline_legacy/edit_hashline_patch_legacy only. This is the original compact hashline mode. Patch:\n${scenario.payloads.hashline_legacy.input}\n`;
   if (mode === "hashline") return common + `Use read_hashline/edit_hashline_patch only. This is adaptive strict hashline mode. Patch:\n${scenario.payloads.hashline.input}\n`;
   if (mode === "crc") return common + `Use read_tagged to get fileCrc32, then edit_crc_range. Payload shape:\n${JSON.stringify(scenario.payloads.crc, null, 2)}\n`;
@@ -47,6 +48,7 @@ function commandFor(mode, promptFile, args) {
   const basePi = ["--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`];
   if (mode === "pi_edit") return { cmd: "pi", args: [...basePi, "--tools", "read,edit"] };
   if (mode === "tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_tagged"] };
+  if (mode === "codex_patch") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "edit_codex_patch"] };
   if (mode === "hashline_legacy") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline_legacy,edit_hashline_patch_legacy"] };
   if (mode === "hashline") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_patch"] };
   if (mode === "crc") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_crc_range"] };
@@ -72,7 +74,7 @@ function expectedText(fixture, scenario) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node bench/actual-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_legacy,hashline,crc] [--include-oh-my-pi] [--timeout SEC]");
+    console.log("Usage: node bench/actual-runner.mjs [--out DIR] [--modes pi_edit,tagged,codex_patch,hashline_legacy,hashline,crc] [--include-oh-my-pi] [--timeout SEC]");
     return;
   }
   const plan = buildPlan();

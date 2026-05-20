@@ -3,6 +3,7 @@ import { Type } from "typebox";
 import * as fs from "node:fs/promises";
 import {
   appendMetric,
+  applyCodexPatch,
   crc32,
   estimateJsonChars,
   estimateTokensFromChars,
@@ -363,6 +364,30 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
       return {
         content: [{ type: "text", text: `Applied legacy hashline patch to ${results.map((r) => r.path).join(", ")}` }],
         details: { results },
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: "edit_codex_patch",
+    label: "Edit Codex patch",
+    description:
+      "Apply a Codex apply_patch-style context diff. Patch envelope: *** Begin Patch / *** Update File: PATH / @@ hunks / *** End Patch.",
+    parameters: Type.Object({
+      input: Type.String({ description: "Codex apply_patch text" }),
+    }),
+    async execute(_toolCallId, params) {
+      const result = await applyCodexPatch(params.input, { cwd: process.cwd() });
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "edit_codex_patch",
+        files: result.results.length,
+        ops: result.ops.length,
+        inputChars: estimateJsonChars(params),
+        inputTokenEstimate: estimateTokensFromChars(estimateJsonChars(params)),
+      });
+      return {
+        content: [{ type: "text", text: `Applied Codex patch to ${result.results.map((r: any) => r.path).join(", ")}` }],
+        details: { results: result.results },
       };
     },
   });

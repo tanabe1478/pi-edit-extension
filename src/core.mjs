@@ -433,6 +433,156 @@ export function validateAndApplyTaggedEdits(text, edits, opts = {}) {
   return { text: joinLines(out, parsed.finalNewline, parsed.eol), ranges };
 }
 
+export function formatCodexPatch(pathName, text, start, end, newText, opts = {}) {
+  const { context = 3 } = opts;
+  const { lines } = splitLinesPreserveFinalNewline(text);
+  const beforeStart = Math.max(1, start - context);
+  const afterEnd = Math.min(lines.length, end + context);
+  const replacement = newText.length ? newText.replace(/\r\n/g, "\n").split("\n") : [];
+  const out = ["*** Begin Patch", `*** Update File: ${pathName}`, "@@"];
+  for (let n = beforeStart; n < start; n++) out.push(` ${lines[n - 1] ?? ""}`);
+  for (let n = start; n <= end; n++) out.push(`-${lines[n - 1] ?? ""}`);
+  for (const line of replacement) out.push(`+${line}`);
+  for (let n = end + 1; n <= afterEnd; n++) out.push(` ${lines[n - 1] ?? ""}`);
+  out.push("*** End Patch");
+  return out.join("\n");
+}
+
+function parseCodexPatch(patch) {
+  const lines = String(patch).replace(/\r\n/g, "\n").trim().split("\n");
+  if (lines[0]?.trim() !== "*** Begin Patch") throw new Error("Codex patch must start with *** Begin Patch");
+  if (lines.at(-1)?.trim() !== "*** End Patch") throw new Error("Codex patch must end with *** End Patch");
+  const ops = [];
+  for (let i = 1; i < lines.length - 1; ) {
+    const line = lines[i];
+    if (line.startsWith("*** Update File: ")) {
+      const pathName = line.slice("*** Update File: ".length).trim();
+      i++;
+      const chunks = [];
+      while (i < lines.length - 1 && !lines[i].startsWith("*** ")) {
+        let changeContext;
+        if (lines[i] === "@@") i++;
+        else if (lines[i]?.startsWith("@@ ")) { changeContext = lines[i].slice(3); i++; }
+        else if (chunks.length) throw new Error(`Expected @@ hunk marker, got: ${lines[i]}`);
+        const oldLines = [];
+        const newLines = [];
+        let isEndOfFile = false;
+        while (i < lines.length - 1 && !lines[i].startsWith("@@") && !lines[i].startsWith("*** ")) {
+          const raw = lines[i++];
+          if (raw === "*** End of File") { isEndOfFile = true; break; }
+          const sigil = raw[0];
+          const body = raw.slice(1);
+          if (sigil === " ") { oldLines.push(body); newLines.push(body); }
+          else if (sigil === "-") oldLines.push(body);
+          else if (sigil === "+") newLines.push(body);
+          else if (raw === "") { oldLines.push(""); newLines.push(""); }
+          else throw new Error(`Invalid codex hunk line: ${raw}`);
+        }
+        chunks.push({ changeContext, oldLines, newLines, isEndOfFile });
+      }
+      ops.push({ kind: "update", path: pathName, chunks });
+      continue;
+    }
+    if (line.startsWith("*** Add File: ")) {
+      const pathName = line.slice("*** Add File: ".length).trim();
+      i++;
+      const contents = [];
+      while (i < lines.length - 1 && !lines[i].startsWith("*** ")) {
+        if (!lines[i].startsWith("+")) throw new Error(`Add file lines must start with +: ${lines[i]}`);
+        contents.push(lines[i++].slice(1));
+      }
+      ops.push({ kind: "add", path: pathName, contents });
+      continue;
+    }
+    if (line.startsWith("*** Delete File: ")) {
+      ops.push({ kind: "delete", path: line.slice("*** Delete File: ".length).trim() });
+      i++;
+      continue;
+    }
+    throw new Error(`Invalid codex patch file op: ${line}`);
+  }
+  return ops;
+}
+
+function normalizeCodexSeek(s) {
+  return s.trim().replace(/[\u2010-\u2015\u2212]/g, "-").replace(/[\u2018\u2019\u201A\u201B]/g, "'").replace(/[\u201C\u201D\u201E\u201F]/g, '"').replace(/[\u00A0\u2002-\u200A\u202F\u205F\u3000]/g, " ");
+}
+
+function seekCodexSequence(lines, pattern, start = 0, eof = false) {
+  if (!pattern.length) return start;
+  if (pattern.length > lines.length) return undefined;
+  const searchStart = eof && lines.length >= pattern.length ? lines.length - pattern.length : start;
+  const passes = [
+    (a, b) => a === b,
+    (a, b) => a.trimEnd() === b.trimEnd(),
+    (a, b) => a.trim() === b.trim(),
+    (a, b) => normalizeCodexSeek(a) === normalizeCodexSeek(b),
+  ];
+  for (const eq of passes) {
+    for (let i = searchStart; i <= lines.length - pattern.length; i++) {
+      let ok = true;
+      for (let j = 0; j < pattern.length; j++) if (!eq(lines[i + j], pattern[j])) { ok = false; break; }
+      if (ok) return i;
+    }
+  }
+  return undefined;
+}
+
+function applyCodexUpdate(text, chunks) {
+  const parsed = splitLinesPreserveFinalNewline(text);
+  const replacements = [];
+  let lineIndex = 0;
+  for (const chunk of chunks) {
+    if (chunk.changeContext) {
+      const idx = seekCodexSequence(parsed.lines, [chunk.changeContext], lineIndex, false);
+      if (idx === undefined) throw new Error(`Failed to find context '${chunk.changeContext}'`);
+      lineIndex = idx + 1;
+    }
+    let pattern = chunk.oldLines;
+    let newSlice = chunk.newLines;
+    if (!pattern.length) {
+      replacements.push([parsed.lines.length, 0, newSlice]);
+      continue;
+    }
+    let found = seekCodexSequence(parsed.lines, pattern, lineIndex, chunk.isEndOfFile);
+    if (found === undefined && pattern.at(-1) === "") {
+      pattern = pattern.slice(0, -1);
+      if (newSlice.at(-1) === "") newSlice = newSlice.slice(0, -1);
+      found = seekCodexSequence(parsed.lines, pattern, lineIndex, chunk.isEndOfFile);
+    }
+    if (found === undefined) throw new Error(`Failed to find expected lines:\n${chunk.oldLines.join("\n")}`);
+    replacements.push([found, pattern.length, newSlice]);
+    lineIndex = found + pattern.length;
+  }
+  const out = parsed.lines.slice();
+  for (const [idx, len, repl] of replacements.sort((a, b) => b[0] - a[0])) out.splice(idx, len, ...repl);
+  return joinLines(out, true, parsed.eol);
+}
+
+export async function applyCodexPatch(patch, opts = {}) {
+  const { cwd = process.cwd(), dryRun = false } = opts;
+  const ops = parseCodexPatch(patch);
+  const results = [];
+  for (const op of ops) {
+    const p = resolveUserPath(op.path, cwd);
+    if (op.kind === "update") {
+      const before = await fs.readFile(p, "utf8");
+      const text = applyCodexUpdate(before, op.chunks);
+      if (!dryRun) await fs.writeFile(p, text, "utf8");
+      results.push({ path: p, kind: "update", chunks: op.chunks.length });
+    } else if (op.kind === "add") {
+      const text = op.contents.join("\n") + "\n";
+      if (!dryRun) await fs.writeFile(p, text, { encoding: "utf8", flag: "wx" });
+      results.push({ path: p, kind: "add" });
+    } else if (op.kind === "delete") {
+      const before = await fs.readFile(p, "utf8");
+      if (!dryRun) await fs.unlink(p);
+      results.push({ path: p, kind: "delete", oldChars: before.length });
+    }
+  }
+  return { results, ops };
+}
+
 export async function appendMetric(metricsPath, record) {
   if (!metricsPath) return;
   await fs.mkdir(path.dirname(metricsPath), { recursive: true });

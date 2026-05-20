@@ -74,6 +74,23 @@ Ops:
 - `= A..B` replace range
 - payload lines start with `~`
 
+### `edit_codex_patch`
+
+Applies a Codex `apply_patch`-style context diff:
+
+```text
+*** Begin Patch
+*** Update File: src/a.ts
+@@
+ const before = 1;
+-const value = oldName(input);
++const value = newName(input);
+ const after = 2;
+*** End Patch
+```
+
+This implementation is based on the current OpenAI Codex `codex-rs/apply-patch` parser/application behavior: `*** Begin Patch` envelope, file operations, `@@` hunks, old/context lines located by exact match, then trailing-whitespace-insensitive, trim-insensitive, and Unicode-punctuation-normalized matching. It is included as `codex_patch` in benchmarks.
+
 ### `read_tagged`
 
 Reads a file and returns lines as:

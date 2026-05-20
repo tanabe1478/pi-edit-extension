@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {
+  applyCodexPatch,
+  formatCodexPatch,
   formatHashline,
   formatHashlineAnchor,
   formatTagged,
@@ -12,6 +14,9 @@ import {
   validateAndApplyTaggedEdits,
   xxHash32,
 } from "../src/core.mjs";
+import * as fs from "node:fs/promises";
+import * as os from "node:os";
+import * as path from "node:path";
 
 test("formatTagged emits line:tag content", () => {
   const res = formatTagged("a\nb\n", { tagChars: 4 });
@@ -120,4 +125,25 @@ test("hashline recovery rejects ambiguous current segments", () => {
   const anchor = formatHashlineAnchor(2, "b");
   const patch = `@@ file.txt\n= ${anchor}..${anchor}\n~B`;
   assert.throws(() => recoverHashlinePatchFromSnapshot(snapshot, current, patch), /matched 2 locations/);
+});
+
+test("formatCodexPatch emits apply_patch style context diff", () => {
+  const patch = formatCodexPatch("file.txt", "a\nb\nc\n", 2, 2, "B", { context: 1 });
+  assert.equal(patch, "*** Begin Patch\n*** Update File: file.txt\n@@\n a\n-b\n+B\n c\n*** End Patch");
+});
+
+test("applyCodexPatch applies context diff", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-patch-test-"));
+  await fs.writeFile(path.join(dir, "file.txt"), "a\nb\nc\n", "utf8");
+  const patch = formatCodexPatch("file.txt", "a\nb\nc\n", 2, 2, "B", { context: 1 });
+  const result = await applyCodexPatch(patch, { cwd: dir });
+  assert.equal(result.results[0].kind, "update");
+  assert.equal(await fs.readFile(path.join(dir, "file.txt"), "utf8"), "a\nB\nc\n");
+});
+
+test("applyCodexPatch rejects missing old context", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "codex-patch-test-"));
+  await fs.writeFile(path.join(dir, "file.txt"), "a\nchanged\nc\n", "utf8");
+  const patch = formatCodexPatch("file.txt", "a\nb\nc\n", 2, 2, "B", { context: 1 });
+  await assert.rejects(() => applyCodexPatch(patch, { cwd: dir }), /Failed to find expected lines/);
 });

@@ -4,6 +4,7 @@ import * as path from "node:path";
 import {
   estimateJsonChars,
   estimateTokensFromChars,
+  formatCodexPatch,
   formatHashlineRangeAnchors,
   splitLinesPreserveFinalNewline,
   tagFor,
@@ -55,6 +56,7 @@ function scenario(name, text, start, end, newText) {
     old_new: { path: "fixture.ts", edits: [{ oldText, newText }] },
     pi_edit: piEdit,
     tagged: { path: "fixture.ts", edits: [{ lines: taggedSpec(text, start, end), newText }] },
+    codex_patch: { input: formatCodexPatch("fixture.ts", text, start, end, newText) },
     hashline_legacy: { input: hashlinePatch(text, start, end, newText, op, { strictMode: "none", forceStrict: false }) },
     hashline: { input: hashlinePatch(text, start, end, newText, op) },
     crc: { path: "fixture.ts", fileCrc32: "12345678", startLine: start, endLine: end, newText },
