@@ -10,6 +10,7 @@ import {
   strictHashlineTag,
   tagFor,
   validateAndApplyHashlinePatch,
+  validateAndApplyHashlineRangeEdit,
   validateAndApplyTaggedEdits,
 } from "../src/core.mjs";
 
@@ -57,6 +58,7 @@ async function runSameLineHashCollision() {
     ["codex_patch", () => applyCodexInTemp(current, codexPatch), "reject"],
     ["hashline_legacy", () => validateAndApplyHashlinePatch(current, `@@ file.txt\n= ${plain}..${plain}\n~patched`).text, "false_accept"],
     ["hashline", () => validateAndApplyHashlinePatch(current, `@@ file.txt\n= ${strict}..${strict}\n~patched`).text, "reject"],
+    ["hashline_range", () => validateAndApplyHashlineRangeEdit(current, { path: "file.txt", start: strict, end: strict, newText: "patched" }).text, "reject"],
     ["crc", () => applyCrcRange(current, crc32(`${oldLine}\n`).toString(16).padStart(8, "0"), 1, 1, "patched"), "reject"],
   ]) {
     try {
@@ -78,13 +80,15 @@ async function runDestructiveRangeRequiresStrict() {
   const strictB = formatHashlineAnchor(25, "line 25", { strict: true });
   const desired = "";
   const results = [];
-  for (const [mode, patch, expected] of [
-    ["hashline_legacy", `@@ file.txt\n- ${plainA}..${plainB}`, "apply"],
-    ["hashline", `@@ file.txt\n- ${plainA}..${plainB}`, "reject"],
-    ["hashline_strict_endpoints", `@@ file.txt\n- ${strictA}..${strictB}`, "apply"],
+  for (const [mode, fn, expected] of [
+    ["hashline_legacy", () => validateAndApplyHashlinePatch(current, `@@ file.txt\n- ${plainA}..${plainB}`, { requireStrictRanges: false }).text, "apply"],
+    ["hashline", () => validateAndApplyHashlinePatch(current, `@@ file.txt\n- ${plainA}..${plainB}`).text, "reject"],
+    ["hashline_strict_endpoints", () => validateAndApplyHashlinePatch(current, `@@ file.txt\n- ${strictA}..${strictB}`).text, "apply"],
+    ["hashline_range_plain", () => validateAndApplyHashlineRangeEdit(current, { path: "file.txt", start: plainA, end: plainB, newText: "" }).text, "reject"],
+    ["hashline_range_strict", () => validateAndApplyHashlineRangeEdit(current, { path: "file.txt", start: strictA, end: strictB, newText: "" }).text, "apply"],
   ]) {
     try {
-      const out = validateAndApplyHashlinePatch(current, patch, { requireStrictRanges: mode !== "hashline_legacy" }).text;
+      const out = fn();
       results.push(ok(name, mode, out.trim() === desired ? "apply" : "apply_other", expected, `${out.length} chars`));
     } catch (err) {
       results.push(ok(name, mode, "reject", expected, err.message));

@@ -249,7 +249,7 @@ Initial result summary:
 
 | case | expected difference observed |
 | --- | --- |
-| same-line 2-char hash collision | `hashline_legacy` false-accepts; `hashline` strict rejects; `pi_edit`, `tagged`, `codex_patch`, and `crc` reject |
-| destructive range without strict endpoints | legacy hashline applies; adaptive hashline rejects until strict endpoints are used |
+| same-line 2-char hash collision | `hashline_legacy` false-accepts; `hashline` and `hashline_range` strict reject; `pi_edit`, `tagged`, `codex_patch`, and `crc` reject |
+| destructive range without strict endpoints | legacy hashline applies; adaptive hashline and `hashline_range` reject until strict endpoints are used |
 | whole-file CRC invalidation | `crc` rejects after unrelated file change |
 | Codex fuzzy whitespace boundary | trim/trailing-whitespace drift applies; semantic drift rejects |
