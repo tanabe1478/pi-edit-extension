@@ -187,6 +187,14 @@ Synthetic benchmark:
 npm run bench
 ```
 
+Failure/stress benchmark for stale, collision, and fuzzy-match behavior:
+
+```bash
+npm run bench:failure
+```
+
+Historical notes and current benchmark interpretation are in [`docs/benchmark-history.md`](docs/benchmark-history.md).
+
 It compares JSON payload sizes for:
 
 - standard `oldText/newText`
