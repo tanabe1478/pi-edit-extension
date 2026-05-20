@@ -195,6 +195,12 @@ npm run bench:failure
 
 Historical notes and current benchmark interpretation are in [`docs/benchmark-history.md`](docs/benchmark-history.md).
 
+Product-level and natural-use eval planning is in [`docs/product-eval-plan.md`](docs/product-eval-plan.md). An initial natural-use runner is available:
+
+```bash
+npm run bench:natural -- --out /tmp/pi-edit-natural --modes pi_edit,tagged,hashline --limit 3
+```
+
 It compares JSON payload sizes for:
 
 - standard `oldText/newText`
