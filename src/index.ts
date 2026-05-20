@@ -16,6 +16,7 @@ import {
   tagFor,
   recoverHashlinePatchFromSnapshot,
   validateAndApplyHashlinePatch,
+  validateAndApplyHashlineRangeEdit,
   validateAndApplyTaggedEdits,
 } from "./core.mjs";
 
@@ -314,6 +315,48 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
       return {
         content: [{ type: "text", text: `Applied hashline patch to ${results.map((r) => r.path).join(", ")}` }],
         details: { results },
+      };
+    },
+  });
+
+  pi.registerTool({
+    name: "edit_hashline_range",
+    label: "Edit hashline range",
+    description:
+      "Structured adaptive hashline range edit. Copy start/end anchors from read_hashline, including :tag when present. Empty newText deletes the range.",
+    parameters: Type.Object({
+      path: Type.String({ description: "File path, relative to current working directory or absolute" }),
+      start: Type.String({ description: "Start anchor copied from read_hashline, e.g. 12ab or 12ab:Q8fA" }),
+      end: Type.String({ description: "End anchor copied from read_hashline, e.g. 15cd or 15cd:Px01" }),
+      newText: Type.String({ description: "Replacement text. Empty string deletes the selected range." }),
+    }),
+    async execute(_toolCallId, params) {
+      const p = resolveUserPath(params.path);
+      const before = await fs.readFile(p, "utf8");
+      let result;
+      let recovered = false;
+      try {
+        result = validateAndApplyHashlineRangeEdit(before, { path: params.path, start: params.start, end: params.end, newText: params.newText });
+      } catch (err) {
+        if (!(err instanceof HashlineMismatchError) || !hashlineSnapshots.has(p)) throw err;
+        const payload = params.newText.length ? "\n" + params.newText.replace(/\r\n/g, "\n").split("\n").map((line: string) => `~${line}`).join("\n") : "";
+        const op = params.newText.length ? "=" : "-";
+        result = recoverHashlinePatchFromSnapshot(hashlineSnapshots.get(p) as string, before, `@@ ${params.path}\n${op} ${params.start}..${params.end}${payload}`);
+        recovered = true;
+      }
+      await fs.writeFile(p, result.text, "utf8");
+      hashlineSnapshots.set(p, result.text);
+      const inputChars = estimateJsonChars(params);
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "edit_hashline_range",
+        path: p,
+        recovered,
+        inputChars,
+        inputTokenEstimate: estimateTokensFromChars(inputChars),
+      });
+      return {
+        content: [{ type: "text", text: `Applied hashline range edit to ${p}` }],
+        details: { path: p, recovered },
       };
     },
   });

@@ -11,6 +11,7 @@ import {
   splitLinesPreserveFinalNewline,
   tagFor,
   validateAndApplyHashlinePatch,
+  validateAndApplyHashlineRangeEdit,
   validateAndApplyTaggedEdits,
   xxHash32,
 } from "../src/core.mjs";
@@ -91,6 +92,13 @@ test("documents 2-char hashline false-accept collision risk", () => {
   const patch = `@@ file.txt\n= ${oldAnchor}..${oldAnchor}\n~patched`;
   const res = validateAndApplyHashlinePatch(`${collidingCurrentLine}\n`, patch);
   assert.equal(res.text, "patched\n");
+});
+
+test("structured hashline range edit replaces without patch syntax", () => {
+  const before = "a\nb\nc\n";
+  const start = formatHashlineAnchor(2, "b");
+  const res = validateAndApplyHashlineRangeEdit(before, { path: "file.txt", start, end: start, newText: "B" });
+  assert.equal(res.text, "a\nB\nc\n");
 });
 
 test("strict hashline anchor rejects 2-char false-accept collision", () => {

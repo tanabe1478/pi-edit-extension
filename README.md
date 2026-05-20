@@ -55,6 +55,21 @@ Parameters:
 - `context?` default `2`
 - `limit?` default `100`
 
+### `edit_hashline_range`
+
+Structured adaptive hashline range edit. This is intended for natural LLM use because it avoids the free-form `= A..B` / `~payload` patch syntax:
+
+```json
+{
+  "path": "src/a.ts",
+  "start": "4fb",
+  "end": "5dm:Q8fA",
+  "newText": "const clean = normalize(name);\nreturn clean;"
+}
+```
+
+Copy anchors from `read_hashline`, including `:tag` when present. Empty `newText` deletes the range.
+
 ### `edit_hashline_patch`
 
 Applies a compact patch language inspired by oh-my-pi:
@@ -195,10 +210,10 @@ npm run bench:failure
 
 Historical notes and current benchmark interpretation are in [`docs/benchmark-history.md`](docs/benchmark-history.md).
 
-Product-level and natural-use eval planning is in [`docs/product-eval-plan.md`](docs/product-eval-plan.md). Natural-use validation results are tracked in [`docs/natural-use-results.md`](docs/natural-use-results.md). An initial natural-use runner is available:
+Product-level and natural-use eval planning is in [`docs/product-eval-plan.md`](docs/product-eval-plan.md). Natural-use validation results are tracked in [`docs/natural-use-results.md`](docs/natural-use-results.md), with structured range follow-up in [`docs/hashline-range-results.md`](docs/hashline-range-results.md). An initial natural-use runner is available:
 
 ```bash
-npm run bench:natural -- --out /tmp/pi-edit-natural --modes pi_edit,tagged,hashline --limit 3
+npm run bench:natural -- --out /tmp/pi-edit-natural --modes pi_edit,tagged,hashline,hashline_range --limit 3
 ```
 
 It compares JSON payload sizes for:

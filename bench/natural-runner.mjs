@@ -11,7 +11,7 @@ const EXT = path.join(ROOT, "src/index.ts");
 function parseArgs(argv) {
   const args = {
     out: path.join(ROOT, ".natural-runs", new Date().toISOString().replace(/[:.]/g, "-")),
-    modes: ["pi_edit", "tagged", "codex_patch", "hashline_legacy", "hashline", "crc"],
+    modes: ["pi_edit", "tagged", "codex_patch", "hashline_legacy", "hashline", "hashline_range", "crc"],
     timeout: 180,
     task: null,
     limit: null,
@@ -56,6 +56,7 @@ function promptFor(mode, scenario) {
   if (mode === "codex_patch") return common + "Use only read and edit_codex_patch. Read enough context, then write a Codex apply_patch-style patch.\n";
   if (mode === "hashline_legacy") return common + "Use only read_hashline_legacy and edit_hashline_patch_legacy. Read the relevant anchors first, then edit.\n";
   if (mode === "hashline") return common + "Use only read_hashline and edit_hashline_patch. Preserve any strict :tag anchors returned by read_hashline. If an edit is rejected for strict anchors, re-read and retry once.\n";
+  if (mode === "hashline_range") return common + "Use only read_hashline and edit_hashline_range. Read the relevant anchors first. Copy start/end anchors exactly, including :tag when present. Use newText as the full replacement text; empty newText deletes the range.\n";
   if (mode === "crc") return common + "Use only read_tagged and edit_crc_range. Read the file metadata to obtain fileCrc32, then edit the requested line range.\n";
   throw new Error(`Unsupported mode ${mode}`);
 }
@@ -67,6 +68,7 @@ function commandFor(mode, promptFile) {
   if (mode === "codex_patch") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,edit_codex_patch"] };
   if (mode === "hashline_legacy") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline_legacy,edit_hashline_patch_legacy"] };
   if (mode === "hashline") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_patch"] };
+  if (mode === "hashline_range") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range"] };
   if (mode === "crc") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_crc_range"] };
   throw new Error(mode);
 }
@@ -74,7 +76,7 @@ function commandFor(mode, promptFile) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node bench/natural-runner.mjs [--out DIR] [--modes pi_edit,tagged,codex_patch,hashline_legacy,hashline,crc] [--task NAME] [--limit N] [--timeout SEC]");
+    console.log("Usage: node bench/natural-runner.mjs [--out DIR] [--modes pi_edit,tagged,codex_patch,hashline_legacy,hashline,hashline_range,crc] [--task NAME] [--limit N] [--timeout SEC]");
     return;
   }
   const plan = buildPlan();

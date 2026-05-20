@@ -559,6 +559,14 @@ function applyCodexUpdate(text, chunks) {
   return joinLines(out, true, parsed.eol);
 }
 
+export function validateAndApplyHashlineRangeEdit(text, edit, opts = {}) {
+  const { payloadSep = "~" } = opts;
+  const op = edit.newText?.length ? "=" : "-";
+  const payload = edit.newText?.length ? "\n" + edit.newText.replace(/\r\n/g, "\n").split("\n").map((line) => `${payloadSep}${line}`).join("\n") : "";
+  const patch = `@@ ${edit.path ?? "file"}\n${op} ${edit.start}..${edit.end}${payload}`;
+  return validateAndApplyHashlinePatch(text, patch, opts);
+}
+
 export async function applyCodexPatch(patch, opts = {}) {
   const { cwd = process.cwd(), dryRun = false } = opts;
   const ops = parseCodexPatch(patch);
