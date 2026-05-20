@@ -18,6 +18,7 @@
     "bench:product": "node bench/product-runner.mjs",
     "bench:collision": "node bench/collision.mjs",
     "bench:failure": "node bench/failure.mjs",
+    "bench:fallback": "node bench/fallback.mjs",
     "scan:secrets": "gitleaks detect --source . --verbose --redact"
   },
   "keywords": ["pi", "extension", "llm", "edit", "checksum", "benchmark"],
