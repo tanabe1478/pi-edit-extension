@@ -42,13 +42,15 @@ Current tasks:
 
 ## Grading
 
-A run succeeds only if all are true:
+The runner now reports two success levels:
 
-1. `pi -p` exits successfully.
-2. Final files exactly match the expected files for the task.
-3. `npm test` passes in the temporary repository.
+1. `product_success` / `success`
+   - `pi -p` exits successfully
+   - `npm test` passes in the temporary repository
+2. `exact`
+   - final files exactly match the expected files for the task
 
-The exact-file check is intentionally stricter than tests alone. It catches cases where the model produces a semantically acceptable but different implementation, which is useful while comparing edit tools.
+`exact` is kept as a strict deterministic comparison signal, but it is no longer the main success criterion. Product-level success is based on passing checks, because equivalent implementations or formatting can differ from the expected fixture while still being correct.
 
 ## Why this exists
 

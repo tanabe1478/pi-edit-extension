@@ -178,7 +178,10 @@ async function main() {
       const check = spawnSync("npm", ["test"], { cwd: dir, timeout: 60_000, encoding: "utf8" });
       const diffs = compareFiles(dir, task.expectedFiles);
       const metricRecords = fs.existsSync(metricsPath) ? fs.readFileSync(metricsPath, "utf8").split(/\n+/).filter(Boolean).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
-      const record = { mode, task: task.id, status: res.status, signal: res.signal, duration_ms: durationMs, exact: diffs.length === 0, checks_pass: check.status === 0, success: res.status === 0 && diffs.length === 0 && check.status === 0, diffs, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
+      const exact = diffs.length === 0;
+      const checksPass = check.status === 0;
+      const productSuccess = res.status === 0 && checksPass;
+      const record = { mode, task: task.id, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
       results.push(record);
       await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
       console.log(JSON.stringify(record));
@@ -186,9 +189,10 @@ async function main() {
   }
   const summary = {};
   for (const r of results) {
-    summary[r.mode] ??= { total: 0, success: 0, exact: 0, checks_pass: 0, duration_ms: 0 };
+    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0 };
     summary[r.mode].total++;
     if (r.success) summary[r.mode].success++;
+    if (r.product_success) summary[r.mode].product_success++;
     if (r.exact) summary[r.mode].exact++;
     if (r.checks_pass) summary[r.mode].checks_pass++;
     summary[r.mode].duration_ms += r.duration_ms;

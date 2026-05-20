@@ -19,18 +19,22 @@ Tasks:
 
 ## Summary
 
-| mode | success | exact | checks_pass | avg_duration_ms |
+| mode | product_success | exact | checks_pass | avg_duration_ms |
 | --- | ---: | ---: | ---: | ---: |
-| `pi_edit` | 1/3 | 1/3 | 3/3 | 61676 |
+| `pi_edit` | 3/3 | 1/3 | 3/3 | 61676 |
 | `tagged` | 3/3 | 3/3 | 3/3 | 25428 |
-| `hashline_range` | 2/3 | 2/3 | 3/3 | 22946 |
-| `codex_patch` | 2/3 | 2/3 | 3/3 | 21099 |
+| `hashline_range` | 3/3 | 2/3 | 3/3 | 22946 |
+| `codex_patch` | 3/3 | 2/3 | 3/3 | 21099 |
 
-The strict `success` column currently requires both exact expected files and tests passing. All modes produced test-passing repositories for all tasks.
+The original run recorded `success` as exact-file match plus passing tests. That was too strict for product-level validation, because all modes produced test-passing repositories. The runner has been updated so `success` means product success (`pi -p` succeeded and checks passed), while `exact` remains as a separate deterministic comparison signal.
 
 ## Interpretation
 
-### `tagged` was best in this product-level run
+### All modes were product-successful
+
+All modes completed all 3 tasks with passing tests. This is the product-level result.
+
+### `tagged` was best by exact expected-file match
 
 `tagged` completed all 3 tasks with exact expected files and passing tests.
 
@@ -71,20 +75,19 @@ For `rename-request-path-param`, it used the same multiline object assertion sha
 
 The product-level result is different from the synthetic exact-diff benchmark:
 
-- When grading by exact files, `tagged` is strongest in this small run.
-- When grading by tests, all modes are 3/3.
-- Some “failures” are acceptable alternate implementations or formatting choices.
+- Product success: all modes are 3/3.
+- Exact expected-file match: `tagged` is strongest in this small run.
+- Some exact mismatches are acceptable alternate implementations or formatting choices.
 
-This means future product-level grading should separate:
+The runner now separates:
 
-1. **exact diff match** — useful for deterministic edit-tool comparison
-2. **test pass** — useful for product correctness
-3. **semantic/LLM judge or rubric** — useful for accepting equivalent implementations
+1. **product_success / success** — useful for product correctness
+2. **exact diff match** — useful for deterministic edit-tool comparison
+3. **semantic/LLM judge or rubric** — future work for accepting equivalent implementations when tests are not enough
 
 ## Next improvements
 
-1. Add a relaxed semantic grader for product tasks, or record `product_success = checks_pass && no forbidden diff` separately from exact success.
-2. Add more product tasks where tests alone are insufficient, such as config shape changes and user-visible docs.
+1. Add more product tasks where tests alone are insufficient, such as config shape changes and user-visible docs.
 3. Add real file lifecycle tasks:
    - create a new file
    - delete a file
