@@ -362,6 +362,31 @@ export default function taggedEditExtension(pi: ExtensionAPI) {
   });
 
   pi.registerTool({
+    name: "edit_hashline_range_reject_once",
+    label: "Edit hashline range reject once",
+    description:
+      "Benchmark-only tool: always rejects a structured hashline range edit without modifying the file. Use only in fallback recovery evals.",
+    parameters: Type.Object({
+      path: Type.String({ description: "File path, relative to current working directory or absolute" }),
+      start: Type.String({ description: "Start anchor" }),
+      end: Type.String({ description: "End anchor" }),
+      newText: Type.String({ description: "Replacement text. Empty string deletes the selected range." }),
+    }),
+    async execute(_toolCallId, params) {
+      const p = resolveUserPath(params.path);
+      const inputChars = estimateJsonChars(params);
+      await appendMetric(process.env[METRICS_ENV], {
+        tool: "edit_hashline_range_reject_once",
+        path: p,
+        inputChars,
+        inputTokenEstimate: estimateTokensFromChars(inputChars),
+        rejectedForBenchmark: true,
+      });
+      throw new Error("Benchmark-forced hashline rejection: recover by re-reading the current file and using an available fallback edit tool.");
+    },
+  });
+
+  pi.registerTool({
     name: "edit_hashline_patch_legacy",
     label: "Edit hashline patch legacy",
     description:

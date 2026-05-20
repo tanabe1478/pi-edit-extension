@@ -27,7 +27,9 @@ npm run bench:fallback-agent -- \
    - expected to reject
    - fallback should tag-delete the current lines
 
-## Result
+## Initial prompt-only result
+
+The first version asked the model to call a normal failing `edit_hashline_range` first. Result:
 
 | metric | value |
 | --- | ---: |
@@ -36,32 +38,45 @@ npm run bench:fallback-agent -- \
 | attempted hashline first | 0/2 |
 | fallback after rejection | 0/2 |
 
+The model completed both files successfully, but skipped the instructed failing hashline attempt and went directly to tagged fallback. Prompt-only instruction was not enough to force observing a rejection.
+
+## Forced-rejection wrapper result
+
+The runner now uses a benchmark-only tool:
+
+```text
+edit_hashline_range_reject_once
+```
+
+It always rejects without modifying the file and records a metric. The model then has to recover with tagged edits.
+
+Command:
+
+```bash
+npm run bench:fallback-agent -- \
+  --out /tmp/pi-edit-fallback-agent-forced \
+  --timeout 180
+```
+
+Result:
+
+| metric | value |
+| --- | ---: |
+| final file success | 2/2 |
+| used tagged fallback | 2/2 |
+| attempted hashline first | 2/2 |
+| fallback after rejection | 2/2 |
+
 ## Interpretation
 
-The model completed both files successfully, but it **skipped the instructed failing hashline attempt** and went directly to the tagged fallback.
+With a controlled rejecting tool, the model successfully recovered after observing rejection in both tasks.
 
-This happened even though the prompt said the first tool call must be `edit_hashline_range`. The model apparently inferred that the first call was expected to fail and optimized around it.
+This establishes three separate facts:
 
-This is an important result:
-
-- The fallback path works mechanically (`bench:fallback`).
-- The model can complete the task with tagged fallback.
-- But a prompt-only instruction is not enough to force observing a hashline rejection before fallback.
-
-## Implication
-
-To validate natural fallback after rejection, the harness needs stronger control than a single prompt. Options:
-
-1. **Two-turn harness**
-   - force/send the first tool call or otherwise create a state where the model has actually seen the rejection
-   - then ask it to recover
-2. **Benchmark-only tool wrapper**
-   - expose a tool that intentionally rejects once, then requires recovery
-3. **Stateful extension mode**
-   - in a benchmark-only environment, make the first hashline edit for a target reject, then observe whether the model retries or falls back
-4. **Accept bypass as valid policy**
-   - if the model can identify that hashline is unsafe and choose tagged directly, that can be product-successful, but it is not evidence of recovery-after-rejection behavior
+1. The fallback path works mechanically (`bench:fallback`).
+2. The model may bypass an obviously failing first step if only prompted (`attemptedHashline 0/2` in the initial run).
+3. When rejection is actually observed through a tool result, the model can recover with tagged fallback (`fallbackAfterRejection 2/2` with the wrapper).
 
 ## Current conclusion
 
-For product behavior, direct fallback selection can be good: the final files were correct. For evaluating recovery after an actual tool rejection, we need a controlled multi-step harness rather than prompt-only natural use.
+For product behavior, direct fallback selection can be good: the final files were correct. For evaluating recovery after an actual tool rejection, a controlled rejection wrapper or multi-step harness is necessary. The wrapper-based harness confirms recovery is possible.

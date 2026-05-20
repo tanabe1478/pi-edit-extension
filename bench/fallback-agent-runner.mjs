@@ -35,20 +35,20 @@ const tasks = [
     id: "stale-strict-then-tagged",
     fileText: `${staleCurrent}\n`,
     expected: "patched\n",
-    prompt: `You are editing fixture.txt. This is a fallback-behavior benchmark. Your first tool call MUST be edit_hashline_range with exactly these arguments, even though it is expected to be rejected:\n\npath: fixture.txt\nstart: ${staleStrict}\nend: ${staleStrict}\nnewText: patched\n\nDo not call read_tagged before this first edit_hashline_range call. After the hashline edit is rejected, recover by using read_tagged and edit_tagged against the current file. The final file must contain exactly:\n\npatched\n`,
+    prompt: `You are editing fixture.txt. This is a fallback-behavior benchmark. Your first tool call MUST be edit_hashline_range_reject_once with exactly these arguments:\n\npath: fixture.txt\nstart: ${staleStrict}\nend: ${staleStrict}\nnewText: patched\n\nThis benchmark-only tool will reject without modifying the file. After that rejection, recover by using read_tagged and edit_tagged against the current file. The final file must contain exactly:\n\npatched\n`,
   },
   {
     id: "plain-destructive-then-tagged",
     fileText: destructiveText,
     expected: "\n",
-    prompt: `You are editing fixture.txt. This is a fallback-behavior benchmark. Your first tool call MUST be edit_hashline_range with exactly these arguments, even though it is expected to be rejected:\n\npath: fixture.txt\nstart: ${destructiveA}\nend: ${destructiveB}\nnewText: <empty string>\n\nDo not call read_tagged before this first edit_hashline_range call. After the hashline edit is rejected, recover by using read_tagged and edit_tagged against the current file. The final file should contain no non-empty lines.`,
+    prompt: `You are editing fixture.txt. This is a fallback-behavior benchmark. Your first tool call MUST be edit_hashline_range_reject_once with exactly these arguments:\n\npath: fixture.txt\nstart: ${destructiveA}\nend: ${destructiveB}\nnewText: <empty string>\n\nThis benchmark-only tool will reject without modifying the file. After that rejection, recover by using read_tagged and edit_tagged against the current file. The final file should contain no non-empty lines.`,
   },
 ];
 
 function commandFor(promptFile) {
   return {
     cmd: "pi",
-    args: ["--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`, "-e", EXT, "--tools", "edit_hashline_range,read_tagged,edit_tagged"],
+    args: ["--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`, "-e", EXT, "--tools", "edit_hashline_range_reject_once,read_tagged,edit_tagged"],
   };
 }
 
@@ -75,7 +75,7 @@ async function main() {
     const finalText = fs.readFileSync(path.join(dir, "fixture.txt"), "utf8");
     const metricRecords = fs.existsSync(metricsPath) ? fs.readFileSync(metricsPath, "utf8").split(/\n+/).filter(Boolean).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
     const usedTaggedFallback = metricRecords.some((m) => m.tool === "edit_tagged");
-    const attemptedHashline = metricRecords.some((m) => m.tool === "edit_hashline_range");
+    const attemptedHashline = metricRecords.some((m) => m.tool === "edit_hashline_range_reject_once");
     const finalMatches = task.id === "plain-destructive-then-tagged" ? finalText.trim() === "" : finalText === task.expected;
     const record = {
       task: task.id,
