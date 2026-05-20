@@ -76,6 +76,16 @@ test("hashline patch rejects stale anchors", () => {
   assert.throws(() => validateAndApplyHashlinePatch("new\n", `@@ file.txt\n- ${stale}..${stale}`), /Edit rejected/);
 });
 
+test("documents 2-char hashline false-accept collision risk", () => {
+  const oldLine = "collision candidate 8";
+  const collidingCurrentLine = "collision candidate 35";
+  const oldAnchor = formatHashlineAnchor(1, oldLine);
+  assert.equal(formatHashlineAnchor(1, collidingCurrentLine), oldAnchor);
+  const patch = `@@ file.txt\n= ${oldAnchor}..${oldAnchor}\n~patched`;
+  const res = validateAndApplyHashlinePatch(`${collidingCurrentLine}\n`, patch);
+  assert.equal(res.text, "patched\n");
+});
+
 test("hashline recovery applies cached edit across unrelated current changes", () => {
   const snapshot = "a\nb\nc\n";
   const current = "intro\na\nb\nc\n";
