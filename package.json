@@ -15,6 +15,7 @@
     "bench:report": "node bench/report.mjs",
     "bench:actual": "node bench/actual-runner.mjs",
     "bench:natural": "node bench/natural-runner.mjs",
+    "bench:product": "node bench/product-runner.mjs",
     "bench:collision": "node bench/collision.mjs",
     "bench:failure": "node bench/failure.mjs",
     "scan:secrets": "gitleaks detect --source . --verbose --redact"
