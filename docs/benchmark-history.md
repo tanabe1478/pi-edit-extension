@@ -74,7 +74,33 @@ The Rust binary build was attempted, but dependency compilation was killed by th
 36cx|  const repeated = normalize(input.shared ?? defaultValue);
 ```
 
-This is extremely token-efficient, but a stale edit can false-accept if the same line number changes to different text with the same 2-character hash.
+It is important to be precise about what this protects against. `LINEhh` is not just a 2-character hash: it is a line number plus a 2-character hash. That means many ordinary collisions are already mitigated.
+
+For example, if two different lines share the same 2-letter hash:
+
+```text
+36cx|...
+80cx|...
+```
+
+then the line number disambiguates them. Likewise, if line 36 changes and its new content hashes to something other than `cx`, the stale anchor is rejected.
+
+The unresolved risk is narrower: **same-line stale collision**.
+
+```text
+read time:
+1uz|collision candidate 8
+
+edit time:
+1uz|collision candidate 35
+```
+
+Here, both pieces of information available to legacy hashline still match:
+
+- line number: `1`
+- 2-character hash: `uz`
+
+But the full line content changed. With only `LINEhh`, the tool has no remaining information with which to distinguish this from a valid edit. This is not a parser bug; it is an information-limit of the compact representation.
 
 A concrete collision used in tests:
 
@@ -82,6 +108,14 @@ A concrete collision used in tests:
 "collision candidate 8"  -> hash `uz`
 "collision candidate 35" -> hash `uz`
 ```
+
+Ways to detect this class of stale edit require adding information somewhere:
+
+- longer hash
+- extra checksum
+- read-snapshot validation
+- file version / mtime / whole-file hash
+- carrying old content, as `oldText/newText` or Codex patch does
 
 ### Adaptive strict hashline
 
@@ -109,6 +143,8 @@ Edit-time range rules are also deterministic:
 - current threshold: range length >= 20 lines
 
 This preserves token efficiency for normal lines while hardening known risk areas.
+
+The goal is not to make hashline identical to `oldText/newText`; the goal is to keep the compact `LINEhh` form for low-risk lines and add information only where the deterministic risk model says the compact form is weak.
 
 ## Current broad benchmark suite
 

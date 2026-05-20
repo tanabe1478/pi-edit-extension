@@ -214,7 +214,7 @@ npm test
 - Tags are short CRC32-derived prefixes, so collisions are possible.
 - `read_hashline` vendors oh-my-pi's curated 647 single-token bigram list and uses a Node-compatible xxHash32 implementation matching `Bun.hash.xxHash32(input, 0)`.
 - The hashline patch parser has read/search snapshot recovery for simple stale-anchor cases, but still lacks oh-my-pi's richer duplicate-boundary absorption, LSP writethrough, and streaming preview.
-- A plain 2-character hashline anchor can false-accept if the same line number changes to different content with the same 2-letter hash. This is documented by a regression test (`documents 2-char hashline false-accept collision risk`). Adaptive strict anchors mitigate this for deterministic high-risk cases while preserving compact anchors for safe-looking lines.
+- A plain `LINEhh` hashline anchor already uses line number + 2-letter hash, so ordinary cross-line hash collisions are line-disambiguated. The remaining risk is same-line stale collision: the same line number changes to different content that happens to have the same 2-letter hash. This is documented by a regression test (`documents 2-char hashline false-accept collision risk`). Adaptive strict anchors mitigate this for deterministic high-risk cases while preserving compact anchors for safe-looking lines.
 - This is a prototype for measuring behavior, not a replacement for pi's built-in `edit` yet.
 
 ## Experiment plan
