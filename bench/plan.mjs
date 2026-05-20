@@ -71,6 +71,7 @@ function scenario(name, text, start, end, newText) {
 export function buildPlan() {
   const fixture = makeFixture(240);
   const scenarios = [
+    // Original 12-task suite retained for continuity.
     scenario("one-line replacement", fixture, 12, 12, "  const value_10 = normalizeFast(input.value_10);"),
     scenario("small block replacement", fixture, 37, 41, "  total += computeWindow(items, 35, 39, limit);"),
     scenario("large deletion", fixture, 82, 141, ""),
@@ -83,6 +84,49 @@ export function buildPlan() {
     scenario("near eof replacement", fixture, 241, 241, "  return finalize(total, limit);"),
     scenario("file opener replacement", fixture, 1, 1, "export function fixtureOptimized(items, input, limit, defaultValue) {"),
     scenario("medium deletion", fixture, 180, 199, ""),
+
+    // Additional narrow replacements across different line shapes.
+    scenario("early accumulator replacement", fixture, 2, 2, "  let total = Number(input.initialTotal ?? 0);"),
+    scenario("normalize value replacement", fixture, 7, 7, "  const value_5 = normalizeFast(input.value_5 ?? defaultValue);"),
+    scenario("if compute line replacement", fixture, 23, 23, "  if (items[21]?.enabled && limit > 21) total += computeChecked(items[21], limit);"),
+    scenario("late value replacement", fixture, 152, 152, "  const value_150 = normalizeFast(input.value_150 ?? defaultValue);"),
+    scenario("late template replacement", fixture, 222, 222, "  const message_220 = formatMessage(input.value_220, limit);"),
+    scenario("return line replacement", fixture, 243, 243, "  return clamp(total, limit);"),
+
+    // Small and medium block edits.
+    scenario("two-line setup replacement", fixture, 1, 2, "export function fixtureV2(items, input, limit, defaultValue) {\n  let total = Number(input.initialTotal ?? 0);"),
+    scenario("three-line mixed replacement", fixture, 21, 23, "  const value_19 = normalizeFast(input.value_19 ?? defaultValue);\n  const message_20 = formatMessage(input.value_20, limit);\n  total += computeIfEnabled(items[21], limit);"),
+    scenario("ten-line compaction", fixture, 60, 69, "  total += computeWindow(items, 58, 67, limit);"),
+    scenario("fifteen-line replacement", fixture, 100, 114, "  total += computeWindow(items, 98, 112, limit);"),
+    scenario("block containing repeated line", fixture, 68, 72, "  total += computeSharedWindow(items, input.shared, defaultValue);"),
+    scenario("block across template and if", fixture, 132, 138, "  total += computeWindow(items, 130, 136, limit);"),
+    scenario("near eof small block", fixture, 239, 244, "  return finalize(total, limit);\n}"),
+
+    // Deletions of different sizes, including repeated and near-boundary regions.
+    scenario("delete short filler block", fixture, 3, 6, ""),
+    scenario("delete repeated window", fixture, 68, 72, ""),
+    scenario("delete ten lines", fixture, 120, 129, ""),
+    scenario("delete nineteen lines below strict threshold", fixture, 200, 218, ""),
+    scenario("delete twenty one lines strict threshold", fixture, 30, 50, ""),
+    scenario("delete tail block", fixture, 230, 242, ""),
+
+    // Insertion-shaped replacements that expand a single line into multiple lines.
+    scenario("expand value line to guard", fixture, 17, 17, "  const raw_15 = input.value_15 ?? defaultValue;\n  const value_15 = normalizeFast(raw_15);\n  total += score(value_15);"),
+    scenario("expand repeated line to cached shared", fixture, 70, 70, "  const shared = input.shared ?? defaultValue;\n  const repeated = normalizeFast(shared);"),
+    scenario("expand if line to block", fixture, 100, 100, "  if (items[98]?.enabled && limit > 98) {\n    total += computeChecked(items[98], limit);\n  }"),
+    scenario("expand template to object", fixture, 112, 112, "  const message_110 = formatMessage(input.value_110, limit);\n  const record_110 = { message: message_110, limit };"),
+
+    // Repeated-target ambiguity stress cases.
+    scenario("replace second repeated line", fixture, 53, 53, "  const repeated = normalizeFast(input.shared ?? defaultValue);"),
+    scenario("replace later repeated line", fixture, 87, 87, "  const repeated = normalizeCached(input.shared ?? defaultValue);"),
+    scenario("delete later repeated line", fixture, 121, 121, ""),
+    scenario("replace repeated-adjacent filler", fixture, 52, 52, "  // shared normalization follows; keep adjacent context stable"),
+
+    // Larger replacements and deletions for token-scaling behavior.
+    scenario("thirty-line summarization", fixture, 50, 79, "  total += summarizeWindow(items, input, 48, 77, limit);"),
+    scenario("forty-line deletion", fixture, 150, 189, ""),
+    scenario("hundred-line replacement", fixture, 40, 139, "  total += summarizeLargeWindow(items, input, limit);"),
+    scenario("hundred-line deletion", fixture, 40, 139, ""),
   ];
   return { version: 1, fixture: { path: "fixture.ts", text: fixture }, scenarios };
 }
