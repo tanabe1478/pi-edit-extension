@@ -32,6 +32,10 @@ export function createClient(options = {}) {
   };
 }
 `,
+  "src/legacy.js": `export function legacyNormalize(value) {
+  return String(value ?? "").trim();
+}
+`,
   "test/config.test.js": `import test from "node:test";
 import assert from "node:assert/strict";
 import { parseConfig, DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES } from "../src/config.js";
@@ -96,6 +100,51 @@ export function createClient(options = {}) {
       "test/config.test.js": baseFiles["test/config.test.js"].replace('assert.equal(client.request("/health").timeoutMs, 5000);', 'assert.deepEqual(client.request("/health"), { endpoint: "/health", timeoutMs: 5000, retries: DEFAULT_RETRIES });').replace('  assert.equal(client.request("/health").retries, DEFAULT_RETRIES);\n', ""),
     }),
   },
+  {
+    id: "create-logger-module",
+    name: "Create logger module",
+    lifecycle: true,
+    prompt: "Create a new src/logger.js module exporting formatLogLevel(level = \"info\") that returns the uppercased string form of the level. Add test/logger.test.js covering the default and a \"debug\" override. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/logger.js": `export function formatLogLevel(level = "info") {
+  return String(level).toUpperCase();
+}
+`,
+      "test/logger.test.js": `import test from "node:test";
+import assert from "node:assert/strict";
+import { formatLogLevel } from "../src/logger.js";
+
+test("formatLogLevel uses INFO by default", () => {
+  assert.equal(formatLogLevel(), "INFO");
+});
+
+test("formatLogLevel uppercases overrides", () => {
+  assert.equal(formatLogLevel("debug"), "DEBUG");
+});
+`,
+    }),
+  },
+  {
+    id: "delete-legacy-module",
+    name: "Delete legacy module",
+    lifecycle: true,
+    prompt: "Delete the unused src/legacy.js module. Do not change runtime behavior. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/legacy.js": null,
+    }),
+  },
+  {
+    id: "rename-config-to-settings",
+    name: "Rename config module to settings",
+    lifecycle: true,
+    prompt: "Rename src/config.js to src/settings.js and update imports in source and tests. Do not change behavior. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/config.js": null,
+      "src/settings.js": baseFiles["src/config.js"],
+      "src/client.js": baseFiles["src/client.js"].replace('./config.js', './settings.js'),
+      "test/config.test.js": baseFiles["test/config.test.js"].replace('../src/config.js', '../src/settings.js'),
+    }),
+  },
 ];
 
 function parseArgs(argv) {
@@ -124,18 +173,19 @@ async function writeFiles(dir, files) {
 }
 
 function promptFor(mode, task) {
-  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n`;
-  if (mode === "pi_edit") return common + "Use only built-in read and edit tools.\n";
-  if (mode === "tagged") return common + "Use only read_tagged and edit_tagged for file modifications.\n";
-  if (mode === "hashline_range") return common + "Use only read_hashline and edit_hashline_range for file modifications. Copy anchors exactly, including :tag when present.\n";
-  if (mode === "hybrid_hashline_tagged") return common + "For file modifications, prefer read_hashline + edit_hashline_range for line-oriented edits. If hashline anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Do not use built-in edit.\n";
+  const lifecycle = task.lifecycle ? "This task may require file creation, deletion, or rename. You may use bash for file lifecycle operations, and use the mode-specific edit tools for editing existing file contents.\n" : "";
+  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n${lifecycle}`;
+  if (mode === "pi_edit") return common + "Use built-in read/edit/write tools for file changes. Bash is available for tests and lifecycle operations.\n";
+  if (mode === "tagged") return common + "Use read_tagged and edit_tagged for existing-file content modifications. Bash is available for tests and lifecycle operations.\n";
+  if (mode === "hashline_range") return common + "Use read_hashline and edit_hashline_range for existing-file content modifications. Copy anchors exactly, including :tag when present. Bash is available for tests and lifecycle operations.\n";
+  if (mode === "hybrid_hashline_tagged") return common + "For existing-file content modifications, prefer read_hashline + edit_hashline_range for line-oriented edits. If hashline anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Bash is available for tests and lifecycle operations. Do not use built-in edit for existing-file content edits.\n";
   if (mode === "codex_patch") return common + "Use only read and edit_codex_patch for file modifications.\n";
   throw new Error(mode);
 }
 
 function commandFor(mode, promptFile) {
   const basePi = ["--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`];
-  if (mode === "pi_edit") return { cmd: "pi", args: [...basePi, "--tools", "read,edit,bash"] };
+  if (mode === "pi_edit") return { cmd: "pi", args: [...basePi, "--tools", "read,edit,write,bash"] };
   if (mode === "tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_tagged,bash"] };
   if (mode === "hashline_range") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,bash"] };
   if (mode === "hybrid_hashline_tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,read_tagged,edit_tagged,bash"] };
@@ -147,7 +197,12 @@ function compareFiles(dir, expectedFiles) {
   const diffs = [];
   for (const [rel, expected] of Object.entries(expectedFiles)) {
     const file = path.join(dir, rel);
-    const actual = fs.existsSync(file) ? fs.readFileSync(file, "utf8") : null;
+    const exists = fs.existsSync(file);
+    if (expected === null) {
+      if (exists) diffs.push({ file: rel, expected: "absent", actualChars: fs.readFileSync(file, "utf8").length });
+      continue;
+    }
+    const actual = exists ? fs.readFileSync(file, "utf8") : null;
     if (actual !== expected) diffs.push({ file: rel, expectedChars: expected.length, actualChars: actual?.length ?? null });
   }
   return diffs;
