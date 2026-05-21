@@ -101,6 +101,93 @@ export function createClient(options = {}) {
     }),
   },
   {
+    id: "validate-timeout-positive",
+    name: "Validate positive timeout",
+    prompt: "Add validation so parseConfig throws a RangeError with message \"timeoutMs must be positive\" when timeoutMs is less than or equal to 0. Keep defaults and valid overrides working. Update tests. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/config.js": `export const DEFAULT_TIMEOUT_MS = 5000;
+export const DEFAULT_RETRIES = 2;
+
+export function parseConfig(input = {}) {
+  const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  if (timeoutMs <= 0) {
+    throw new RangeError("timeoutMs must be positive");
+  }
+  return {
+    timeoutMs,
+    retries: input.retries ?? DEFAULT_RETRIES,
+  };
+}
+`,
+      "test/config.test.js": baseFiles["test/config.test.js"].replace(`test("parseConfig accepts overrides", () => {
+  assert.deepEqual(parseConfig({ timeoutMs: 100, retries: 4 }), { timeoutMs: 100, retries: 4 });
+});
+`, `test("parseConfig accepts overrides", () => {
+  assert.deepEqual(parseConfig({ timeoutMs: 100, retries: 4 }), { timeoutMs: 100, retries: 4 });
+});
+
+test("parseConfig rejects non-positive timeouts", () => {
+  assert.throws(() => parseConfig({ timeoutMs: 0 }), /timeoutMs must be positive/);
+  assert.throws(() => parseConfig({ timeoutMs: -1 }), /timeoutMs must be positive/);
+});
+`),
+    }),
+  },
+  {
+    id: "add-base-url-config",
+    name: "Add base URL config",
+    prompt: "Add a DEFAULT_BASE_URL of \"https://api.example.com\" to config parsing. parseConfig should return baseUrl, createClient should expose baseUrl, and request(path) should include url built by concatenating baseUrl and path. Keep timeout/retry behavior. Update tests. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/config.js": `export const DEFAULT_TIMEOUT_MS = 5000;
+export const DEFAULT_RETRIES = 2;
+export const DEFAULT_BASE_URL = "https://api.example.com";
+
+export function parseConfig(input = {}) {
+  return {
+    timeoutMs: input.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+    retries: input.retries ?? DEFAULT_RETRIES,
+    baseUrl: input.baseUrl ?? DEFAULT_BASE_URL,
+  };
+}
+`,
+      "src/client.js": `import { parseConfig } from "./config.js";
+
+export function createClient(options = {}) {
+  const config = parseConfig(options);
+  return {
+    timeoutMs: config.timeoutMs,
+    retries: config.retries,
+    baseUrl: config.baseUrl,
+    request(path) {
+      return { path, url: config.baseUrl + path, timeoutMs: config.timeoutMs, retries: config.retries };
+    },
+  };
+}
+`,
+      "test/config.test.js": `import test from "node:test";
+import assert from "node:assert/strict";
+import { parseConfig, DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES, DEFAULT_BASE_URL } from "../src/config.js";
+import { createClient } from "../src/client.js";
+
+test("parseConfig uses defaults", () => {
+  assert.equal(DEFAULT_TIMEOUT_MS, 5000);
+  assert.equal(DEFAULT_BASE_URL, "https://api.example.com");
+  assert.deepEqual(parseConfig(), { timeoutMs: 5000, retries: 2, baseUrl: "https://api.example.com" });
+});
+
+test("parseConfig accepts overrides", () => {
+  assert.deepEqual(parseConfig({ timeoutMs: 100, retries: 4, baseUrl: "https://internal.example" }), { timeoutMs: 100, retries: 4, baseUrl: "https://internal.example" });
+});
+
+test("client uses parsed config", () => {
+  const client = createClient();
+  assert.equal(client.baseUrl, DEFAULT_BASE_URL);
+  assert.deepEqual(client.request("/health"), { path: "/health", url: "https://api.example.com/health", timeoutMs: 5000, retries: DEFAULT_RETRIES });
+});
+`,
+    }),
+  },
+  {
     id: "create-logger-module",
     name: "Create logger module",
     lifecycle: true,
