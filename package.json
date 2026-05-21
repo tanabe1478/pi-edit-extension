@@ -16,6 +16,7 @@
     "bench:actual": "node bench/actual-runner.mjs",
     "bench:natural": "node bench/natural-runner.mjs",
     "bench:product": "node bench/product-runner.mjs",
+    "bench:product-summary": "node bench/product-summary.mjs",
     "bench:collision": "node bench/collision.mjs",
     "bench:failure": "node bench/failure.mjs",
     "bench:fallback": "node bench/fallback.mjs",
