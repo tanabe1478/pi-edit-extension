@@ -1,6 +1,6 @@
 # Tool I/O accounting
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/tool-io-accounting.md)
 
 ## Fields
 

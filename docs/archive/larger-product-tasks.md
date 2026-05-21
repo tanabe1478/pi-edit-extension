@@ -1,6 +1,6 @@
 # Larger existing-file product tasks
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/larger-product-tasks.md)
 
 ## Added tasks
 

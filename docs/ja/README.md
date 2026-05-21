@@ -1,27 +1,30 @@
-# pi-edit-extension 日本語ドキュメント
+# ドキュメント索引
 
 English: [Documentation index](../README.md)
 
-## 概要
+## はじめに読むもの
 
-pi の built-in `edit` を、extension の opt-in policy として置き換えるための実験的リポジトリです。
-
-通常編集は tagged、stale safety や repeated file では hashline、file lifecycle は `write` / `bash` に分担します。
-
-## まず読むもの
-
-- [Quickstart 日本語版](quickstart.md)
+- [Quickstart](quickstart.md)
 - [推奨 edit policy](recommended-edit-policy.md)
-- [評価サマリ](final-evaluation-report.md)
+- [最終評価レポート](final-evaluation-report.md)
+- [ドキュメント文体](writing-style.md)
 
-## 英語ドキュメント
+## 現在の運用・評価ドキュメント
 
-英語ドキュメントの索引は [docs/README.md](../README.md) です。
+- [Edit replacement modes](edit-replacement-modes.md)
+- [Product evaluation plan](product-eval-plan.md)
+- [Product runner](product-runner.md)
+- [Product trials](product-trials.md)
+- [Product outcome classification](product-outcome-classification.md)
+- [Product summary tool](product-summary-tool.md)
+- [Tool I/O accounting](tool-io-accounting.md)
+- [Session tool I/O](session-tool-io.md)
+- [Session report skill](session-report-skill.md)
+- [File lifecycle tasks](file-lifecycle-tasks.md)
+- [Remaining work plan](remaining-work-plan.md)
 
-## 現在の結論
+## Archive
 
-- extension としては使い始められる段階です。
-- built-in `edit` は tool set から外します。
-- `read`, `write`, `bash` は残します。
-- コスト削減だけでなく、安全性と fallback policy を含めた置き換えとして扱います。
-- 実運用では `--capture-session` で session I/O を確認してください。
+過去の単発実験ログは [archive/](archive/) に置いています。
+
+現在の使い方は上記の current docs を優先してください。

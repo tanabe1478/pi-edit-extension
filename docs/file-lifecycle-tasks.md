@@ -1,6 +1,6 @@
 # File lifecycle product tasks
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/file-lifecycle-tasks.md)
 
 ## Added fixture file
 

@@ -1,6 +1,6 @@
 # Product summary tool
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/product-summary-tool.md)
 
 ## Usage
 

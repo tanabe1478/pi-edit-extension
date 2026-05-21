@@ -1,6 +1,6 @@
 # Selected product repeated-trial results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/selected-product-trials-results.md)
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Session tool I/O accounting
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/session-tool-io.md)
 
 ## Usage
 

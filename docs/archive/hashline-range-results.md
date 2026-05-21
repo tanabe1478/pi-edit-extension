@@ -1,6 +1,6 @@
 # Structured hashline range tool validation
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/hashline-range-results.md)
 
 ## Motivation
 

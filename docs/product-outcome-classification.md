@@ -1,6 +1,6 @@
 # Product outcome classification
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/product-outcome-classification.md)
 
 ## Categories
 

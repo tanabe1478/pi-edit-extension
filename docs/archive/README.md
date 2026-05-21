@@ -1,6 +1,6 @@
 # Archived experiment logs
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/README.md)
 
 ## Purpose
 

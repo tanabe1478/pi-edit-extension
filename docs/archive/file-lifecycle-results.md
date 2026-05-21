@@ -1,6 +1,6 @@
 # File lifecycle product results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/file-lifecycle-results.md)
 
 ## Commands
 

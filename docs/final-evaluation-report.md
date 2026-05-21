@@ -1,6 +1,6 @@
 # Final evaluation report draft
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/final-evaluation-report.md)
 
 ## Goal
 

@@ -1,6 +1,6 @@
 # Session I/O comparison results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/session-io-comparison-results.md)
 
 ## Commands
 

@@ -1,6 +1,6 @@
 # Edit replacement product modes
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/edit-replacement-modes.md)
 
 ## Modes
 

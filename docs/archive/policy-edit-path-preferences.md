@@ -1,6 +1,6 @@
 # Policy edit path preferences
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/policy-edit-path-preferences.md)
 
 ## Why
 

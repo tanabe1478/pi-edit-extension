@@ -1,6 +1,6 @@
 # Edit replacement product results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/edit-replacement-results.md)
 
 ## Command
 

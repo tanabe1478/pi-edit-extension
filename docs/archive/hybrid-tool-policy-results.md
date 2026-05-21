@@ -1,6 +1,6 @@
 # Hybrid tool policy validation
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/hybrid-tool-policy-results.md)
 
 ## Runner support
 

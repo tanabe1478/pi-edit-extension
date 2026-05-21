@@ -1,8 +1,10 @@
-# Quickstart 日本語版
+# Quickstart
 
 English: [Quickstart](../quickstart.md)
 
-## 起動例
+この extension は pi の built-in `edit` を opt-in で置き換えます。`read`, `write`, `bash` は残します。
+
+## 推奨 tool policy
 
 ```bash
 pi \
@@ -10,30 +12,50 @@ pi \
   --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
 ```
 
-built-in `edit` は入れません。
+replacement behavior を評価するときは built-in `edit` を入れません。
 
-## モデルへの指示例
+## モデル向け指示
 
 ```text
 Do not use built-in edit.
-Use read_tagged + edit_tagged for normal edits.
-Use read_hashline + edit_hashline_range for safety-sensitive or large repeated file edits.
-If hashline is rejected, fall back to tagged.
-Use write/bash for file lifecycle and tests.
-Start with likely relevant files and avoid broad reads.
+For normal existing-file content edits, use read_tagged + edit_tagged.
+Use read_hashline + edit_hashline_range when stale safety is important, the file is large/repeated, or exact anchors matter.
+If a hashline edit is rejected, recover with read_tagged + edit_tagged.
+Use write/bash for file creation, deletion, rename, and tests.
+When likely target files are known, start with those files and avoid broad repository reads unless necessary.
 ```
 
-## 使い分け
+## 典型的な流れ
 
-| 場面 | tool |
-| --- | --- |
-| 通常編集 | `read_tagged` + `edit_tagged` |
-| safety / repeated file | `read_hashline` + `edit_hashline_range` |
-| hashline reject | `read_tagged` + `edit_tagged` |
-| create file | `write` |
-| delete / rename / test | `bash` |
+### 通常編集
+
+1. `read_tagged` で対象ファイルを読む
+2. `edit_tagged` で対象行を編集する
+3. 必要なら `bash` でテストを実行する
+
+### safety-sensitive edit
+
+1. `read_hashline` で対象ファイルを読む
+2. `edit_hashline_range` で range edit する
+3. reject されたら `read_tagged` + `edit_tagged` に fallback する
+
+### file lifecycle
+
+- create file: `write`
+- delete / rename / move: `bash`
+- tests: `bash`
 
 ## benchmark
+
+```bash
+npm run bench:product -- \
+  --modes replace_edit_policy \
+  --task default-timeout-8000 \
+  --timeout 300 \
+  --capture-session
+```
+
+## built-in edit との比較
 
 ```bash
 npm run bench:product -- \
@@ -42,3 +64,18 @@ npm run bench:product -- \
   --timeout 300 \
   --capture-session
 ```
+
+## run の集計
+
+```bash
+npm run bench:product-summary -- \
+  --out /tmp/pi-edit-summary.md \
+  /tmp/some-product-run
+```
+
+## 現在の指針
+
+- 通常の product edit は `read_tagged` + `edit_tagged` を default にする
+- safety-oriented path は `read_hashline` + `edit_hashline_range`
+- target file hint は重要
+- built-in `edit` との最終比較は `--capture-session` を使う

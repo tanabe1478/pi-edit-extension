@@ -1,6 +1,6 @@
 # Natural-use validation results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/natural-use-results.md)
 
 ## Run: first 5 scenarios, all modes
 

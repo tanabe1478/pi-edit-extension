@@ -1,6 +1,6 @@
 # Relevant file hints results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/relevant-file-hints-results.md)
 
 ## Smoke commands
 

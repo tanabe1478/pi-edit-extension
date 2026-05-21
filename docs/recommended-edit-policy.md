@@ -1,6 +1,6 @@
 # Recommended edit replacement policy
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/recommended-edit-policy.md)
 
 ## Current recommendation
 

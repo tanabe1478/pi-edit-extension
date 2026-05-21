@@ -1,6 +1,6 @@
 # Session report skill
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/session-report-skill.md)
 
 ## Skill purpose
 

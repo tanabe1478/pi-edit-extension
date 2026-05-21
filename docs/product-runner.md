@@ -1,6 +1,6 @@
 # Product-level runner
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/product-runner.md)
 
 ## Command
 

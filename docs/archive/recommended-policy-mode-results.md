@@ -1,6 +1,6 @@
 # Recommended policy mode results
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/recommended-policy-mode-results.md)
 
 ## Smoke commands
 

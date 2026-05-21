@@ -1,6 +1,6 @@
 # Remaining validation plan
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/remaining-work-plan.md)
 
 ## Goal
 

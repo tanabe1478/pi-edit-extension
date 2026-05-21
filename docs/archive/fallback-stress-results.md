@@ -1,6 +1,6 @@
 # Fallback stress benchmark
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/fallback-stress-results.md)
 
 ## Command
 

@@ -1,6 +1,6 @@
 # Benchmark history and current findings
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/benchmark-history.md)
 
 ## Background
 

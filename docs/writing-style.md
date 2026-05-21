@@ -1,6 +1,6 @@
 # Writing style
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/writing-style.md)
 
 ## Policy
 

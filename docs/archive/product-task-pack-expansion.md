@@ -1,6 +1,6 @@
 # Product task pack expansion
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/product-task-pack-expansion.md)
 
 ## Added base fixture files
 

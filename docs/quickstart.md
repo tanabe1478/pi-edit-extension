@@ -1,6 +1,6 @@
 # Quickstart
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/quickstart.md)
 
 ## Recommended tool policy
 

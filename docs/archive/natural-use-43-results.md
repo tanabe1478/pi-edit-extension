@@ -1,6 +1,6 @@
 # Natural-use 43-task validation: tagged vs hashline_range
 
-Japanese docs: [Japanese documentation](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/archive/natural-use-43-results.md)
 
 ## Run
 

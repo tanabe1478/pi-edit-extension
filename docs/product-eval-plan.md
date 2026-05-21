@@ -1,6 +1,6 @@
 # Product-level and natural-use evaluation plan
 
-Japanese docs: [Japanese documentation](ja/README.md)
+Japanese docs: [Japanese documentation](ja/product-eval-plan.md)
 
 ## What is still missing
 
