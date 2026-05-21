@@ -62,12 +62,16 @@ Important caveat: built-in tools and `bash` are not instrumented by the extensio
 - `hashline_range` and `hybrid_hashline_tagged` tended to inspect existing files even when the task was mostly lifecycle-oriented.
 - `codex_patch` represented create/delete/rename compactly in a single extension edit call.
 
-## Implication
+## Scope implication
 
-A practical product policy should not expose only `read_hashline` + `edit_hashline_range`. It needs at least one file lifecycle mechanism:
+The project goal is replacing pi's built-in `edit` tool, not replacing every file modification mechanism.
 
-- built-in `write` / `bash`, or
-- a dedicated create/delete/rename tool, or
-- a patch tool such as `edit_codex_patch`.
+Under that scope, these lifecycle results are not a blocker for `hashline_range`. They clarify the boundary:
 
-For existing-file line edits, hashline range remains useful. For lifecycle edits, hybrid policy should explicitly route to lifecycle-capable tools.
+- existing-file line edits: candidate responsibility of `edit_hashline_range` / `edit_tagged` / hybrid
+- create file: existing `write` responsibility
+- delete/rename/move: existing `bash` or dedicated lifecycle tool responsibility
+
+So the practical product comparison should keep built-in `read`, `write`, and `bash` available, remove only built-in `edit`, and compare replacement edit tools for existing-file content changes.
+
+A patch tool such as `edit_codex_patch` may still be useful for product policies that want one tool to cover both edits and lifecycle operations, but that is broader than replacing `edit` alone.

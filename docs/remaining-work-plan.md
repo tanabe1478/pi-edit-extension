@@ -6,6 +6,8 @@ This document breaks the remaining work into small, understandable implementatio
 
 Move from “promising synthetic benchmark” toward “credible replacement/fallback strategy for product use”.
 
+Scope clarification: the target is replacing pi's built-in `edit` tool, not replacing all file modification mechanisms. Built-in `read`, `write`, and `bash` can remain available. Therefore file creation/deletion/rename are lifecycle responsibilities outside the core edit replacement, unless a product policy chooses to route them through a patch tool.
+
 ## Step 1: total tool I/O accounting
 
 Current comparisons often focus on edit payload size, but natural/product runs include read output, retries, and extra verification reads. Add aggregate accounting for:
@@ -36,16 +38,17 @@ Add product tasks that cover operations hashline range does not directly solve:
 
 This will show where fallback tools are required.
 
-## Step 3: all-tools natural/product mode
+## Step 3: edit-replacement product modes
 
-Add a mode where the model can choose among multiple tools naturally:
+Add modes where built-in `read`, `write`, and `bash` remain available, but built-in `edit` is removed and replaced by one of:
 
-- built-in `read` / `edit`
-- `read_hashline` / `edit_hashline_range`
 - `read_tagged` / `edit_tagged`
-- `edit_codex_patch`
+- `read_hashline` / `edit_hashline_range`
+- hybrid hashline-then-tagged fallback
 
-Measure tool choice, success, and cost. This is closer to real operation than mode-isolated runs.
+Measure success, exactness, tool choice, and cost. This directly evaluates the intended product scope: replacing only `edit`.
+
+A later optional all-tools mode can still be useful, but it should be framed as product policy exploration rather than the main replacement benchmark.
 
 ## Step 4: larger product task pack
 

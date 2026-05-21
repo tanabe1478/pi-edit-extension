@@ -180,6 +180,9 @@ function promptFor(mode, task) {
   if (mode === "hashline_range") return common + "Use read_hashline and edit_hashline_range for existing-file content modifications. Copy anchors exactly, including :tag when present. Bash is available for tests and lifecycle operations.\n";
   if (mode === "hybrid_hashline_tagged") return common + "For existing-file content modifications, prefer read_hashline + edit_hashline_range for line-oriented edits. If hashline anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Bash is available for tests and lifecycle operations. Do not use built-in edit for existing-file content edits.\n";
   if (mode === "codex_patch") return common + "Use only read and edit_codex_patch for file modifications.\n";
+  if (mode === "replace_edit_tagged") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. Use read_tagged + edit_tagged for existing-file content edits; use write/bash for file lifecycle operations.\n";
+  if (mode === "replace_edit_hashline") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. Use read_hashline + edit_hashline_range for existing-file content edits; use write/bash for file lifecycle operations. Copy anchors exactly, including :tag when present.\n";
+  if (mode === "replace_edit_hybrid") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. For existing-file content edits, prefer read_hashline + edit_hashline_range. If anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Use write/bash for file lifecycle operations.\n";
   throw new Error(mode);
 }
 
@@ -190,6 +193,9 @@ function commandFor(mode, promptFile) {
   if (mode === "hashline_range") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,bash"] };
   if (mode === "hybrid_hashline_tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,read_tagged,edit_tagged,bash"] };
   if (mode === "codex_patch") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,edit_codex_patch,bash"] };
+  if (mode === "replace_edit_tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_tagged,edit_tagged"] };
+  if (mode === "replace_edit_hashline") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_hashline,edit_hashline_range"] };
+  if (mode === "replace_edit_hybrid") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_hashline,edit_hashline_range,read_tagged,edit_tagged"] };
   throw new Error(mode);
 }
 
