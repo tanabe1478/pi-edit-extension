@@ -24,7 +24,7 @@ function readResult(input) {
 }
 
 function empty() {
-  return { total: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, totalToolIoChars: 0, outcomeCategories: {} };
+  return { total: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, totalToolIoChars: 0, sessionToolCalls: 0, sessionTotalToolIoChars: 0, outcomeCategories: {} };
 }
 
 function add(into, r) {
@@ -35,6 +35,8 @@ function add(into, r) {
   into.duration_ms += r.duration_ms || 0;
   into.toolCalls += r.toolIo?.toolCalls || 0;
   into.totalToolIoChars += r.toolIo?.totalToolIoChars || 0;
+  into.sessionToolCalls += r.sessionToolIo?.toolCalls || 0;
+  into.sessionTotalToolIoChars += r.sessionToolIo?.totalToolIoChars || 0;
   const cat = r.outcomeCategory || "unknown";
   into.outcomeCategories[cat] = (into.outcomeCategories[cat] || 0) + 1;
 }
@@ -43,6 +45,8 @@ function finish(s) {
   s.avg_duration_ms = s.total ? Math.round(s.duration_ms / s.total) : 0;
   s.avgToolIoChars = s.total ? Math.round(s.totalToolIoChars / s.total) : 0;
   s.avgToolCalls = s.total ? Number((s.toolCalls / s.total).toFixed(1)) : 0;
+  s.avgSessionToolIoChars = s.total ? Math.round(s.sessionTotalToolIoChars / s.total) : 0;
+  s.avgSessionToolCalls = s.total ? Number((s.sessionToolCalls / s.total).toFixed(1)) : 0;
   return s;
 }
 
@@ -51,9 +55,9 @@ function cats(c) {
 }
 
 function table(title, rows) {
-  const lines = [`## ${title}`, "", "| key | runs | product | exact | avg ms | avg tool I/O | avg calls | outcomes |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- |"];
+  const lines = [`## ${title}`, "", "| key | runs | product | exact | avg ms | avg ext I/O | avg ext calls | avg session I/O | avg session calls | outcomes |", "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |"];
   for (const [key, s] of rows) {
-    lines.push(`| ${key} | ${s.total} | ${s.product_success}/${s.total} | ${s.exact}/${s.total} | ${s.avg_duration_ms} | ${s.avgToolIoChars} | ${s.avgToolCalls} | ${cats(s.outcomeCategories)} |`);
+    lines.push(`| ${key} | ${s.total} | ${s.product_success}/${s.total} | ${s.exact}/${s.total} | ${s.avg_duration_ms} | ${s.avgToolIoChars} | ${s.avgToolCalls} | ${s.avgSessionToolIoChars} | ${s.avgSessionToolCalls} | ${cats(s.outcomeCategories)} |`);
   }
   lines.push("");
   return lines.join("\n");
