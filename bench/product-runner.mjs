@@ -314,7 +314,7 @@ test("formatLogLevel uppercases overrides", () => {
 ];
 
 function parseArgs(argv) {
-  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "hybrid_hashline_tagged", "codex_patch"], timeout: 240, task: null, limit: null, trials: 1 };
+  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "hybrid_hashline_tagged", "codex_patch"], timeout: 240, task: null, limit: null, trials: 1, captureSession: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") args.out = argv[++i];
@@ -323,6 +323,7 @@ function parseArgs(argv) {
     else if (a === "--task") args.task = argv[++i];
     else if (a === "--limit") args.limit = Number(argv[++i]);
     else if (a === "--trials") args.trials = Number(argv[++i]);
+    else if (a === "--capture-session") args.captureSession = true;
     else if (a === "--help") args.help = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
@@ -353,8 +354,8 @@ function promptFor(mode, task) {
   throw new Error(mode);
 }
 
-function commandFor(mode, promptFile) {
-  const basePi = ["--no-session", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`];
+function commandFor(mode, promptFile, sessionDir = null) {
+  const basePi = [sessionDir ? "--session-dir" : "--no-session", ...(sessionDir ? [sessionDir] : []), "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-context-files", "-p", `@${path.basename(promptFile)}`];
   if (mode === "pi_edit") return { cmd: "pi", args: [...basePi, "--tools", "read,edit,write,bash"] };
   if (mode === "tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_tagged,edit_tagged,bash"] };
   if (mode === "hashline_range") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read_hashline,edit_hashline_range,bash"] };
@@ -396,6 +397,44 @@ function summarizeToolIo(records) {
   return out;
 }
 
+function summarizeSessionToolIo(sessionDir) {
+  const out = { toolCalls: 0, readCalls: 0, editCalls: 0, toolInputChars: 0, toolResultChars: 0, totalToolIoChars: 0, byTool: {} };
+  if (!sessionDir || !fs.existsSync(sessionDir)) return out;
+  const files = fs.readdirSync(sessionDir).filter((f) => f.endsWith(".jsonl")).map((f) => path.join(sessionDir, f));
+  if (files.length === 0) return out;
+  files.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
+  const lines = fs.readFileSync(files[0], "utf8").split(/\n+/).filter(Boolean);
+  for (const line of lines) {
+    let rec;
+    try { rec = JSON.parse(line); } catch { continue; }
+    const msg = rec.message;
+    if (!msg) continue;
+    if (msg.role === "assistant") {
+      for (const c of msg.content || []) {
+        if (c.type !== "toolCall") continue;
+        const tool = c.name || "unknown";
+        const inputChars = JSON.stringify(c.arguments || {}).length;
+        out.toolCalls++;
+        if (tool.startsWith("read") || tool === "search_hashline") out.readCalls++;
+        if (tool.startsWith("edit")) out.editCalls++;
+        out.toolInputChars += inputChars;
+        out.byTool[tool] ??= { calls: 0, inputChars: 0, resultChars: 0 };
+        out.byTool[tool].calls++;
+        out.byTool[tool].inputChars += inputChars;
+      }
+    }
+    if (msg.role === "toolResult") {
+      const tool = msg.toolName || "unknown";
+      const resultChars = (msg.content || []).map((c) => c.text || "").join("\n").length;
+      out.toolResultChars += resultChars;
+      out.byTool[tool] ??= { calls: 0, inputChars: 0, resultChars: 0 };
+      out.byTool[tool].resultChars += resultChars;
+    }
+  }
+  out.totalToolIoChars = out.toolInputChars + out.toolResultChars;
+  return out;
+}
+
 function classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, diffs, metricRecords }) {
   if (productSuccess && exact) return "success_exact";
   if (productSuccess && !exact) return "success_product_only";
@@ -419,7 +458,7 @@ function classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, dif
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,hybrid_hashline_tagged,codex_patch] [--task ID] [--limit N] [--trials N] [--timeout SEC]");
+    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,hybrid_hashline_tagged,codex_patch] [--task ID] [--limit N] [--trials N] [--timeout SEC] [--capture-session]");
     return;
   }
   let selected = tasks;
@@ -438,7 +477,9 @@ async function main() {
         const promptFile = path.join(dir, "prompt.md");
         await fsp.writeFile(promptFile, promptFor(mode, task));
         const metricsPath = path.join(dir, "metrics.jsonl");
-        const { cmd, args: cmdArgs } = commandFor(mode, promptFile);
+        const sessionDir = args.captureSession ? path.join(dir, ".pi-sessions") : null;
+        if (sessionDir) await fsp.mkdir(sessionDir, { recursive: true });
+        const { cmd, args: cmdArgs } = commandFor(mode, promptFile, sessionDir);
         const started = Date.now();
         const res = spawnSync(cmd, cmdArgs, { cwd: dir, timeout: args.timeout * 1000, encoding: "utf8", env: { ...process.env, PI_TAGGED_EDIT_METRICS: metricsPath } });
         const durationMs = Date.now() - started;
@@ -450,8 +491,9 @@ async function main() {
         const checksPass = check.status === 0;
         const productSuccess = res.status === 0 && checksPass;
         const toolIo = summarizeToolIo(metricRecords);
+        const sessionToolIo = summarizeSessionToolIo(sessionDir);
         const outcomeCategory = classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, diffs, metricRecords });
-        const record = { mode, task: task.id, trial, status: res.status, signal: res.signal, timed_out: timedOut, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, outcomeCategory, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
+        const record = { mode, task: task.id, trial, status: res.status, signal: res.signal, timed_out: timedOut, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, outcomeCategory, diffs, toolIo, sessionToolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
         results.push(record);
         await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
         console.log(JSON.stringify(record));
@@ -460,7 +502,7 @@ async function main() {
   }
   const summary = {};
   for (const r of results) {
-    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0, outcomeCategories: {} };
+    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0, sessionToolCalls: 0, sessionToolInputChars: 0, sessionToolResultChars: 0, sessionTotalToolIoChars: 0, outcomeCategories: {} };
     summary[r.mode].total++;
     if (r.success) summary[r.mode].success++;
     if (r.product_success) summary[r.mode].product_success++;
@@ -469,11 +511,17 @@ async function main() {
     summary[r.mode].duration_ms += r.duration_ms;
     for (const key of ["toolCalls", "readCalls", "editCalls", "readResultChars", "editInputChars", "totalToolIoChars"]) summary[r.mode][key] += r.toolIo?.[key] || 0;
     summary[r.mode].outcomeCategories[r.outcomeCategory] = (summary[r.mode].outcomeCategories[r.outcomeCategory] || 0) + 1;
+    summary[r.mode].sessionToolCalls += r.sessionToolIo?.toolCalls || 0;
+    summary[r.mode].sessionToolInputChars += r.sessionToolIo?.toolInputChars || 0;
+    summary[r.mode].sessionToolResultChars += r.sessionToolIo?.toolResultChars || 0;
+    summary[r.mode].sessionTotalToolIoChars += r.sessionToolIo?.totalToolIoChars || 0;
   }
   for (const s of Object.values(summary)) {
     s.avg_duration_ms = Math.round(s.duration_ms / s.total);
     s.avgToolIoChars = Math.round(s.totalToolIoChars / s.total);
     s.avgToolCalls = Number((s.toolCalls / s.total).toFixed(1));
+    s.avgSessionToolIoChars = Math.round(s.sessionTotalToolIoChars / s.total);
+    s.avgSessionToolCalls = Number((s.sessionToolCalls / s.total).toFixed(1));
   }
   await fsp.writeFile(path.join(args.out, "actual-results.json"), JSON.stringify({ summary, results }, null, 2));
   console.log(JSON.stringify({ out: args.out, summary }, null, 2));
