@@ -106,6 +106,7 @@ const tasks = [
     id: "default-timeout-8000",
     name: "Change default timeout to 8000",
     prompt: "Change the product default timeout from 5000ms to 8000ms. Update implementation and tests. Keep explicit user overrides working. Run the test command if possible.",
+    relevantFiles: ["src/config.js", "test/config.test.js"],
     expectedFiles: withFiles({
       "src/config.js": baseFiles["src/config.js"].replace("DEFAULT_TIMEOUT_MS = 5000", "DEFAULT_TIMEOUT_MS = 8000"),
       "test/config.test.js": baseFiles["test/config.test.js"].replaceAll("5000", "8000"),
@@ -115,6 +116,7 @@ const tasks = [
     id: "default-retries-3",
     name: "Change default retries to 3",
     prompt: "Change the product default retry count from 2 to 3. Update implementation and tests. Keep explicit user overrides working. Run the test command if possible.",
+    relevantFiles: ["src/config.js", "test/config.test.js"],
     expectedFiles: withFiles({
       "src/config.js": baseFiles["src/config.js"].replace("DEFAULT_RETRIES = 2", "DEFAULT_RETRIES = 3"),
       "test/config.test.js": baseFiles["test/config.test.js"].replace("{ timeoutMs: 5000, retries: 2 }", "{ timeoutMs: 5000, retries: 3 }").replace("retries, DEFAULT_RETRIES", "retries, DEFAULT_RETRIES"),
@@ -124,6 +126,7 @@ const tasks = [
     id: "rename-request-path-param",
     name: "Rename request path parameter",
     prompt: "In the client request method, rename the parameter from path to endpoint and return { endpoint, timeoutMs, retries } instead of { path, timeoutMs, retries }. Update tests accordingly. Run the test command if possible.",
+    relevantFiles: ["src/client.js", "test/config.test.js"],
     expectedFiles: withFiles({
       "src/client.js": `import { parseConfig } from "./config.js";
 
@@ -145,6 +148,7 @@ export function createClient(options = {}) {
     id: "validate-timeout-positive",
     name: "Validate positive timeout",
     prompt: "Add validation so parseConfig throws a RangeError with message \"timeoutMs must be positive\" when timeoutMs is less than or equal to 0. Keep defaults and valid overrides working. Update tests. Run the test command if possible.",
+    relevantFiles: ["src/config.js", "test/config.test.js"],
     expectedFiles: withFiles({
       "src/config.js": `export const DEFAULT_TIMEOUT_MS = 5000;
 export const DEFAULT_RETRIES = 2;
@@ -178,6 +182,7 @@ test("parseConfig rejects non-positive timeouts", () => {
     id: "add-base-url-config",
     name: "Add base URL config",
     prompt: "Add a DEFAULT_BASE_URL of \"https://api.example.com\" to config parsing. parseConfig should return baseUrl, createClient should expose baseUrl, and request(path) should include url built by concatenating baseUrl and path. Keep timeout/retry behavior. Update tests. Run the test command if possible.",
+    relevantFiles: ["src/config.js", "src/client.js", "test/config.test.js"],
     expectedFiles: withFiles({
       "src/config.js": `export const DEFAULT_TIMEOUT_MS = 5000;
 export const DEFAULT_RETRIES = 2;
@@ -232,6 +237,7 @@ test("client uses parsed config", () => {
     id: "enable-json-cache",
     name: "Enable JSON cache",
     prompt: "Enable cache in config/app.json by changing cache.enabled from false to true. Keep the cache ttlSeconds value unchanged. Update the corresponding app config test. Run the test command if possible.",
+    relevantFiles: ["config/app.json", "test/app-config.test.js"],
     expectedFiles: withFiles({
       "config/app.json": `${JSON.stringify({ name: "demo-client", cache: { enabled: true, ttlSeconds: 60 } }, null, 2)}\n`,
       "test/app-config.test.js": baseFiles["test/app-config.test.js"].replace("disables cache by default", "enables cache").replace("appConfig.cache.enabled, false", "appConfig.cache.enabled, true"),
@@ -241,6 +247,7 @@ test("client uses parsed config", () => {
     id: "document-base-url-option",
     name: "Document base URL option",
     prompt: "Update README.md to document that createClient accepts a baseUrl option. Mention that it defaults to https://api.example.com and that request paths are appended to it. Do not change code. Run the test command if possible.",
+    relevantFiles: ["README.md"],
     expectedFiles: withFiles({
       "README.md": `# Demo Client
 
@@ -261,6 +268,7 @@ Run tests with npm test.
     id: "update-large-route-entry",
     name: "Update large route entry",
     prompt: "In src/routes.js, update only the /route-37 entry so it uses method \"POST\" and handler \"submitRoute37\". Update the corresponding route test. Do not change other routes. Run the test command if possible.",
+    relevantFiles: ["src/routes.js", "test/routes.test.js"],
     expectedFiles: withFiles({
       "src/routes.js": baseFiles["src/routes.js"].replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
       "test/routes.test.js": baseFiles["test/routes.test.js"].replace("route 37 uses GET handler", "route 37 uses POST submit handler").replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
@@ -342,7 +350,8 @@ async function writeFiles(dir, files) {
 
 function promptFor(mode, task) {
   const lifecycle = task.lifecycle ? "This task may require file creation, deletion, or rename. You may use bash for file lifecycle operations, and use the mode-specific edit tools for editing existing file contents.\n" : "";
-  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n${lifecycle}`;
+  const relevant = task.relevantFiles?.length ? `Likely relevant files: ${task.relevantFiles.join(", ")}. Start with these files and avoid broad repository reads unless necessary.\n` : "";
+  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n${relevant}${lifecycle}`;
   if (mode === "pi_edit") return common + "Use built-in read/edit/write tools for file changes. Bash is available for tests and lifecycle operations.\n";
   if (mode === "tagged") return common + "Use read_tagged and edit_tagged for existing-file content modifications. Bash is available for tests and lifecycle operations.\n";
   if (mode === "hashline_range") return common + "Use read_hashline and edit_hashline_range for existing-file content modifications. Copy anchors exactly, including :tag when present. Bash is available for tests and lifecycle operations.\n";
