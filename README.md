@@ -166,6 +166,25 @@ Experimental whole-file CRC range edit:
 
 This is shorter, but any unrelated file change invalidates the CRC.
 
+## Quickstart
+
+The recommended edit-replacement usage keeps built-in `read`, `write`, and `bash`, but removes built-in `edit`:
+
+```bash
+pi \
+  -e ./src/index.ts \
+  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
+```
+
+Policy:
+
+- normal existing-file edits: `read_tagged` + `edit_tagged`
+- safety-sensitive / large / repeated file edits: `read_hashline` + `edit_hashline_range`
+- hashline rejection fallback: `read_tagged` + `edit_tagged`
+- file lifecycle and tests: built-in `write` / `bash`
+
+See [`docs/quickstart.md`](docs/quickstart.md) and [`docs/recommended-edit-policy.md`](docs/recommended-edit-policy.md).
+
 ## Install for local pi testing
 
 From this repository:
