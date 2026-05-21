@@ -1,7 +1,7 @@
 {
   "name": "pi-tagged-edit-extension",
   "version": "0.1.0",
-  "description": "Experimental pi extension for checksum-tagged line edits and edit efficiency benchmarks.",
+  "description": "Experimental pi extension for safer policy-driven edit replacement tools and benchmarks.",
   "type": "module",
   "private": true,
   "pi": {

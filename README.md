@@ -1,10 +1,10 @@
 # pi-tagged-edit-extension
 
-Experimental [pi](https://pi.dev) extension for antirez-style checksum-tagged line edits.
+Experimental [pi](https://pi.dev) extension for safer, policy-driven edit replacement tools. It is inspired by antirez-style checksum tags, oh-my-pi hashline anchors, and Codex-style patches, but implements its own tagged-line, adaptive hashline, and benchmark-driven hybrid policies.
 
 ## Why
 
-Traditional `oldText -> newText` edit tools are safe because they behave like CAS: the old text must still match before replacement. But they are token-expensive, especially for large deletions or replacements. This extension tests a shorter CAS form:
+Traditional `oldText -> newText` edit tools are safe because they behave like CAS: the old text must still match before replacement. But they are token-expensive, especially for large deletions or replacements. This extension explores shorter CAS-like edit forms:
 
 ```text
 10:Q8fA int count = 10;
