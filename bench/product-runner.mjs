@@ -7,6 +7,14 @@ import { spawnSync } from "node:child_process";
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 const EXT = path.join(ROOT, "src/index.ts");
 
+function makeRoutesFile() {
+  const routes = [];
+  for (let i = 1; i <= 40; i++) {
+    routes.push(`  { method: "GET", path: "/route-${i}", handler: "handleRoute${i}" },`);
+  }
+  return `export const routes = [\n${routes.join("\n")}\n];\n`;
+}
+
 const baseFiles = {
   "package.json": JSON.stringify({ type: "module", scripts: { test: "node --test" } }, null, 2) + "\n",
   "src/config.js": `export const DEFAULT_TIMEOUT_MS = 5000;
@@ -36,6 +44,20 @@ export function createClient(options = {}) {
   return String(value ?? "").trim();
 }
 `,
+  "src/routes.js": makeRoutesFile(),
+  "config/app.json": `${JSON.stringify({ name: "demo-client", cache: { enabled: false, ttlSeconds: 60 } }, null, 2)}\n`,
+  "README.md": `# Demo Client
+
+A small JavaScript client used for edit-tool product evaluation.
+
+## Configuration
+
+The client supports timeout and retry options.
+
+## Development
+
+Run tests with npm test.
+`,
   "test/config.test.js": `import test from "node:test";
 import assert from "node:assert/strict";
 import { parseConfig, DEFAULT_TIMEOUT_MS, DEFAULT_RETRIES } from "../src/config.js";
@@ -54,6 +76,25 @@ test("client uses parsed config", () => {
   const client = createClient();
   assert.equal(client.request("/health").timeoutMs, 5000);
   assert.equal(client.request("/health").retries, DEFAULT_RETRIES);
+});
+`,
+  "test/routes.test.js": `import test from "node:test";
+import assert from "node:assert/strict";
+import { routes } from "../src/routes.js";
+
+test("route 37 uses GET handler", () => {
+  assert.deepEqual(routes[36], { method: "GET", path: "/route-37", handler: "handleRoute37" });
+});
+`,
+  "test/app-config.test.js": `import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const appConfig = JSON.parse(readFileSync(new URL("../config/app.json", import.meta.url), "utf8"));
+
+test("app config disables cache by default", () => {
+  assert.equal(appConfig.cache.enabled, false);
+  assert.equal(appConfig.cache.ttlSeconds, 60);
 });
 `,
 };
@@ -185,6 +226,44 @@ test("client uses parsed config", () => {
   assert.deepEqual(client.request("/health"), { path: "/health", url: "https://api.example.com/health", timeoutMs: 5000, retries: DEFAULT_RETRIES });
 });
 `,
+    }),
+  },
+  {
+    id: "enable-json-cache",
+    name: "Enable JSON cache",
+    prompt: "Enable cache in config/app.json by changing cache.enabled from false to true. Keep the cache ttlSeconds value unchanged. Update the corresponding app config test. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "config/app.json": `${JSON.stringify({ name: "demo-client", cache: { enabled: true, ttlSeconds: 60 } }, null, 2)}\n`,
+      "test/app-config.test.js": baseFiles["test/app-config.test.js"].replace("disables cache by default", "enables cache").replace("appConfig.cache.enabled, false", "appConfig.cache.enabled, true"),
+    }),
+  },
+  {
+    id: "document-base-url-option",
+    name: "Document base URL option",
+    prompt: "Update README.md to document that createClient accepts a baseUrl option. Mention that it defaults to https://api.example.com and that request paths are appended to it. Do not change code. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "README.md": `# Demo Client
+
+A small JavaScript client used for edit-tool product evaluation.
+
+## Configuration
+
+The client supports timeout, retry, and baseUrl options.
+The baseUrl option defaults to https://api.example.com, and request paths are appended to it.
+
+## Development
+
+Run tests with npm test.
+`,
+    }),
+  },
+  {
+    id: "update-large-route-entry",
+    name: "Update large route entry",
+    prompt: "In src/routes.js, update only the /route-37 entry so it uses method \"POST\" and handler \"submitRoute37\". Update the corresponding route test. Do not change other routes. Run the test command if possible.",
+    expectedFiles: withFiles({
+      "src/routes.js": baseFiles["src/routes.js"].replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
+      "test/routes.test.js": baseFiles["test/routes.test.js"].replace("route 37 uses GET handler", "route 37 uses POST submit handler").replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
     }),
   },
   {
@@ -324,7 +403,7 @@ function classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, dif
   const stderr = res.stderr || "";
   const stdout = res.stdout || "";
   const combined = `${stdout}\n${stderr}`;
-  const hadRejection = metricRecords.some((m) => m.rejectedForBenchmark || m.error || m.mismatch || m.tool?.startsWith("edit_hashline"));
+  const hadRejection = metricRecords.some((m) => m.rejectedForBenchmark || m.error || m.mismatch);
   if (hadRejection && !productSuccess) return "tool_rejection_unrecovered";
   if (res.status !== 0) {
     if (/Tool .* failed|Error executing tool|Invalid tool|schema|parameters/i.test(combined)) return "syntax_or_tool_misuse";
