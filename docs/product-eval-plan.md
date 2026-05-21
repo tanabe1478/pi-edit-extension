@@ -1,5 +1,10 @@
 # Product-level and natural-use evaluation plan
 
+## 日本語要約
+
+product-level evaluation の計画です。exact match と product success を分けて評価する方針をまとめています。
+
+
 The current benchmark has two layers:
 
 1. **Clean deterministic benchmark** (`npm run bench`, `npm run bench:actual`)

@@ -1,5 +1,10 @@
 # Session I/O comparison results
 
+## 日本語要約
+
+--capture-session による built-in edit と replacement modes の session I/O 比較結果です。
+
+
 This run compares built-in `pi_edit` and edit-replacement modes using `bench:product --capture-session` so built-in tool I/O is visible.
 
 ## Commands

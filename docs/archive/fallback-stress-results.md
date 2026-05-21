@@ -1,5 +1,10 @@
 # Fallback stress benchmark
 
+## 日本語要約
+
+hashline reject 後に tagged fallback が機械的に成立するかを確認した deterministic stress 結果です。
+
+
 This benchmark validates the intended fallback policy mechanically:
 
 1. Try adaptive `hashline_range` first.

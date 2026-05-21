@@ -1,5 +1,10 @@
 # Final evaluation report draft
 
+## 日本語要約
+
+これまでの実装・安全性検証・自然利用・product benchmark・session I/O の結果をまとめた評価レポートです。
+
+
 This is a living final report for the edit replacement experiment.
 
 ## Goal

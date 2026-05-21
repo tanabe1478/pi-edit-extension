@@ -1,5 +1,10 @@
 # Quickstart
 
+## 日本語要約
+
+この拡張を opt-in の edit 置き換えとして使い始めるための最短手順です。推奨 tool set、モデルへの指示、benchmark 実行例をまとめています。
+
+
 This extension targets opt-in replacement of pi's built-in `edit` tool, while keeping built-in `read`, `write`, and `bash` available. It is an extension/tool-policy choice, not a pi-core default change.
 
 ## Recommended tool policy

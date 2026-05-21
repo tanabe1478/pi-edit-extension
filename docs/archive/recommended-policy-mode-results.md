@@ -1,5 +1,10 @@
 # Recommended policy mode results
 
+## 日本語要約
+
+recommended policy mode の smoke 結果です。通常 task と route task で tool path を観察しています。
+
+
 `bench:product` now includes a mode named:
 
 ```text

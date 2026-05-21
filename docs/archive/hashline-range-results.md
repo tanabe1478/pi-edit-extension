@@ -1,5 +1,10 @@
 # Structured hashline range tool validation
 
+## 日本語要約
+
+structured edit_hashline_range を導入した自然利用 follow-up の結果です。
+
+
 ## Motivation
 
 The first natural-use validation showed that adaptive `hashline` can fail even when the underlying tool can apply the correct edit. The failures were caused by the model constructing the free-form hashline patch incorrectly, for example using insertion-like syntax or leaving the original line in place.

@@ -1,5 +1,10 @@
 # Natural-use 43-task validation: tagged vs hashline_range
 
+## 日本語要約
+
+natural-use 43 task run の結果です。tagged と hashline_range が full run で成功した記録です。
+
+
 This validation checks whether the model can use edit tools naturally when no precomputed edit payload is supplied.
 
 Unlike `bench:actual`, the prompt gives only:

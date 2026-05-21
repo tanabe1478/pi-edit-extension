@@ -1,5 +1,10 @@
 # Edit replacement product modes
 
+## 日本語要約
+
+bench:product で使う edit 置き換え mode の定義です。built-in edit だけを外し、read/write/bash は残す前提を説明します。
+
+
 The intended replacement scope is pi's built-in `edit` tool only.
 
 Built-in tools that are not being replaced can remain available:

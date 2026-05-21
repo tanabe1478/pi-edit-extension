@@ -1,5 +1,10 @@
 # Tool I/O accounting
 
+## 日本語要約
+
+extension metrics に基づく tool I/O 集計の定義と caveat を説明します。
+
+
 Natural and product-level runs need a different cost metric than precomputed edit payload size.
 
 In payload-injected benchmarks, the main question is:

@@ -1,5 +1,10 @@
 # Product summary tool
 
+## 日本語要約
+
+複数の bench:product 結果を集計する product-summary tool の使い方です。mode/task 別の集計表を生成します。
+
+
 `bench:product-summary` aggregates one or more `bench:product` result directories.
 
 ## Usage

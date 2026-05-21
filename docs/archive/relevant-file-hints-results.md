@@ -1,5 +1,10 @@
 # Relevant file hints results
 
+## 日本語要約
+
+relevantFiles hint によって探索 read と session I/O が減った実験結果です。
+
+
 `bench:product` tasks now can include `relevantFiles`. The prompt includes:
 
 ```text

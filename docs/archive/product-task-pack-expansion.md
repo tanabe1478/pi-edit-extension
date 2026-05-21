@@ -1,5 +1,10 @@
 # Product task pack expansion
 
+## 日本語要約
+
+JSON、Markdown、大きめ repeated file など product task pack 拡張の記録です。
+
+
 This step adds non-JS and larger-file product tasks to `bench:product`.
 
 ## Added base fixture files

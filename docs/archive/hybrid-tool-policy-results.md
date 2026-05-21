@@ -1,5 +1,10 @@
 # Hybrid tool policy validation
 
+## 日本語要約
+
+hashline 優先 + tagged fallback の hybrid policy を product benchmark で検証した結果です。
+
+
 This validation checks a simple fallback/tool-choice policy:
 
 1. Prefer `read_hashline` + `edit_hashline_range` for line-oriented edits.

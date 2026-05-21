@@ -1,5 +1,10 @@
 # Benchmark history and current findings
 
+## 日本語要約
+
+synthetic benchmark、安全性 stress、oh-my-pi/Codex 調査など過去の benchmark 履歴です。
+
+
 This document summarizes the edit-tool comparison work so far: why the modes exist, what was implemented, what we measured, and what to test next.
 
 ## Background

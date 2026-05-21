@@ -1,5 +1,10 @@
 # Policy edit path preferences
 
+## 日本語要約
+
+task ごとに preferredEditPath を指定して tagged/hashline の使い分けを促す実験結果です。
+
+
 `bench:product` tasks can now include a preferred edit path:
 
 ```js

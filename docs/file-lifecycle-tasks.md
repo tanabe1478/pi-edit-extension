@@ -1,5 +1,10 @@
 # File lifecycle product tasks
 
+## 日本語要約
+
+create/delete/rename など file lifecycle task の fixture と評価上の位置づけを説明します。
+
+
 This step extends `bench:product` beyond existing-file line edits.
 
 ## Added fixture file

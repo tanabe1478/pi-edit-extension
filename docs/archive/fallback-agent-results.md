@@ -1,5 +1,10 @@
 # Agent-level fallback validation
 
+## 日本語要約
+
+agent が hashline rejection を観測した後に tagged fallback できるか検証した結果です。
+
+
 This validation asks the model to exercise the fallback policy in an actual `pi -p` session:
 
 1. First attempt `edit_hashline_range` with an intentionally rejected payload.

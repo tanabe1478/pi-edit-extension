@@ -1,5 +1,10 @@
 # Product-level runner
 
+## 日本語要約
+
+product-level benchmark runner の目的、fixture、成功判定、実行方法を説明します。
+
+
 `bench:product` is the first product-level validation layer. It is inspired by the agent-invocation pattern from `pi-skill-eval-extension`: each task runs in a fresh blank-slate `pi -p` process, with a fixed prompt and isolated working directory.
 
 Unlike the synthetic line benchmark, this runner creates a small JavaScript repository with source files, tests, and a package script. The model receives a product-style task, not a precomputed edit payload.

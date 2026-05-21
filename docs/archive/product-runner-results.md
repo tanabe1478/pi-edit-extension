@@ -1,5 +1,10 @@
 # Product-level runner results
 
+## 日本語要約
+
+初期 product-level runner の benchmark 結果です。product success と exact success を分けています。
+
+
 This records the first full product-level run. The runner creates a small JS product repository, asks the model to perform product-style changes, and grades both exact expected files and `npm test`.
 
 ## Run
