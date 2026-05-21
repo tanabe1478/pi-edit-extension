@@ -1,6 +1,7 @@
 # ドキュメント索引
 
 English: [Documentation index](../README.md)
+Root README: [README.ja.md](../../README.ja.md)
 
 ## はじめに読むもの
 

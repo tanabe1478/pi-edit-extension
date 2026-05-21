@@ -1,6 +1,6 @@
 # pi-edit-extension
 
-Japanese docs: [Japanese documentation](docs/ja/README.md)
+Japanese: [README.ja.md](README.ja.md)
 
 An experimental pi extension for opt-in replacement of the built-in `edit` tool.
 
