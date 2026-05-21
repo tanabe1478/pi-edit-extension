@@ -127,7 +127,9 @@ Relevant-file hints significantly reduce I/O:
 
 ## Current recommendation
 
-Do not globally replace built-in `edit` yet.
+Use this as an opt-in extension policy that fully replaces built-in `edit` within the enabled tool set.
+
+This project is not proposing a pi-core default change. The relevant adoption unit is an extension/tool policy chosen by the user or project.
 
 Recommended extension policy:
 
@@ -144,12 +146,15 @@ Routing:
 - fallback after hashline rejection: `read_tagged` + `edit_tagged`
 - file lifecycle: built-in `write` / `bash`
 
-## Why not full replacement yet?
+## Why policy-based extension replacement?
 
-- Product correctness is strong, but session I/O does not consistently beat built-in `edit`.
+Within an opt-in extension setup, built-in `edit` can be removed from the tool set and replaced by the recommended policy. The question is not whether to change pi defaults, but which extension policy is most useful.
+
+- Product correctness is strong for the replacement policies tested.
+- Session I/O does not consistently beat built-in `edit`, so cost claims should stay modest.
 - Hashline safety is valuable, but read overhead can be high without target-file guidance.
 - Tagged is robust and natural, but lacks hashline's stricter stale/collision properties.
-- The best path is policy-based routing rather than one universal edit primitive.
+- The best extension policy is routing-based rather than one universal edit primitive.
 
 ## Remaining work
 
@@ -163,4 +168,4 @@ Before calling this production-ready:
 
 ## Status
 
-The project is now a functional, benchmarked extension with a documented recommended policy. It is not yet proven as a universal built-in `edit` replacement, but it is ready for targeted extension-based trials.
+The project is now a functional, benchmarked extension with a documented recommended policy. It is ready for opt-in extension-based trials where built-in `edit` is intentionally omitted from the enabled tool set.

@@ -77,12 +77,12 @@ Hybrid needs UX tuning:
 
 ## Current adoption stance
 
-The evidence does not yet justify replacing built-in `edit` globally for all users by default.
+This should be used as an opt-in extension/tool policy. In that policy, built-in `edit` is intentionally omitted and fully replaced by the extension tools.
 
-A safer adoption stance is:
+This project is not about changing pi core defaults or all-user behavior. The practical stance is:
 
-1. ship as an extension/tool policy;
-2. use `tagged` as the practical replacement candidate;
+1. ship/use as an extension-controlled `edit` replacement policy;
+2. use `tagged` as the practical default edit path;
 3. expose `hashline_range` for safety-critical/stale-sensitive edits;
 4. keep `write`/`bash` for lifecycle operations;
 5. continue measuring session-level I/O before claiming cost wins over built-in `edit`.

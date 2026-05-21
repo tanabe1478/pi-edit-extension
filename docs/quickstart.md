@@ -1,6 +1,6 @@
 # Quickstart
 
-This extension currently targets replacing pi's built-in `edit` tool, while keeping built-in `read`, `write`, and `bash` available.
+This extension targets opt-in replacement of pi's built-in `edit` tool, while keeping built-in `read`, `write`, and `bash` available. It is an extension/tool-policy choice, not a pi-core default change.
 
 ## Recommended tool policy
 
