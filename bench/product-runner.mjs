@@ -269,6 +269,7 @@ Run tests with npm test.
     name: "Update large route entry",
     prompt: "In src/routes.js, update only the /route-37 entry so it uses method \"POST\" and handler \"submitRoute37\". Update the corresponding route test. Do not change other routes. Run the test command if possible.",
     relevantFiles: ["src/routes.js", "test/routes.test.js"],
+    preferredEditPath: "hashline",
     expectedFiles: withFiles({
       "src/routes.js": baseFiles["src/routes.js"].replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
       "test/routes.test.js": baseFiles["test/routes.test.js"].replace("route 37 uses GET handler", "route 37 uses POST submit handler").replace('{ method: "GET", path: "/route-37", handler: "handleRoute37" }', '{ method: "POST", path: "/route-37", handler: "submitRoute37" }'),
@@ -351,7 +352,8 @@ async function writeFiles(dir, files) {
 function promptFor(mode, task) {
   const lifecycle = task.lifecycle ? "This task may require file creation, deletion, or rename. You may use bash for file lifecycle operations, and use the mode-specific edit tools for editing existing file contents.\n" : "";
   const relevant = task.relevantFiles?.length ? `Likely relevant files: ${task.relevantFiles.join(", ")}. Start with these files and avoid broad repository reads unless necessary.\n` : "";
-  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n${relevant}${lifecycle}`;
+  const preferred = task.preferredEditPath ? `Preferred edit path for this task: ${task.preferredEditPath}. Follow this preference unless it is clearly unsuitable or rejected.\n` : "";
+  const common = `You are editing a small JavaScript product repository in this directory.\nTask: ${task.prompt}\nDo not make unrelated changes. Inspect files as needed and construct edit payloads yourself.\n${relevant}${preferred}${lifecycle}`;
   if (mode === "pi_edit") return common + "Use built-in read/edit/write tools for file changes. Bash is available for tests and lifecycle operations.\n";
   if (mode === "tagged") return common + "Use read_tagged and edit_tagged for existing-file content modifications. Bash is available for tests and lifecycle operations.\n";
   if (mode === "hashline_range") return common + "Use read_hashline and edit_hashline_range for existing-file content modifications. Copy anchors exactly, including :tag when present. Bash is available for tests and lifecycle operations.\n";
