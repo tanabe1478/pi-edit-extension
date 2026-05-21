@@ -1,6 +1,6 @@
 # Writing style
 
-日本語: [日本語ドキュメント](ja/README.md)
+Japanese docs: [Japanese documentation](ja/README.md)
 
 ## Policy
 
@@ -31,9 +31,9 @@ Use:
 
 ```text
 opt-in extension policy
-built-in edit を外す
-通常編集は tagged
-安全性重視は hashline
+omit built-in edit
+use tagged for normal edits
+use hashline for safety-sensitive edits
 ```
 
 Avoid:

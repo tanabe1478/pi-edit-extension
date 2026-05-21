@@ -1,18 +1,20 @@
 # pi-edit-extension
 
-pi の built-in `edit` を opt-in で置き換える実験的 extension です。
+Japanese docs: [Japanese documentation](docs/ja/README.md)
 
-antirez-style checksum tags、oh-my-pi hashline anchors、Codex-style patch を参考にしています。実装は独自です。
+An experimental pi extension for opt-in replacement of the built-in `edit` tool.
 
-## できること
+The project is inspired by antirez-style checksum tags, oh-my-pi hashline anchors, and Codex-style patches. The implementation and policy are independent.
 
-- 通常編集を `read_tagged` + `edit_tagged` で行う
-- 安全性が必要な編集を `read_hashline` + `edit_hashline_range` で行う
-- hashline が拒否されたら tagged に fallback する
-- `write` / `bash` はそのまま使う
-- benchmark と session log から改善点を確認する
+## What it does
 
-## 推奨起動
+- Uses `read_tagged` + `edit_tagged` for normal edits.
+- Uses `read_hashline` + `edit_hashline_range` for safety-sensitive edits.
+- Falls back to tagged edits after hashline rejection.
+- Keeps built-in `read`, `write`, and `bash` available.
+- Provides benchmarks and session-log reporting.
+
+## Recommended usage
 
 ```bash
 pi \
@@ -20,25 +22,25 @@ pi \
   --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
 ```
 
-built-in `edit` は入れません。
+Do not include built-in `edit` when evaluating replacement behavior.
 
-## 推奨ポリシー
+## Recommended policy
 
-| 場面 | tool |
+| Situation | Tool path |
 | --- | --- |
-| 通常の既存ファイル編集 | `read_tagged` + `edit_tagged` |
-| stale safety / repeated file | `read_hashline` + `edit_hashline_range` |
-| hashline reject | `read_tagged` + `edit_tagged` |
-| create file | `write` |
-| delete / rename / test | `bash` |
+| Normal existing-file edit | `read_tagged` + `edit_tagged` |
+| Stale-sensitive or repeated-file edit | `read_hashline` + `edit_hashline_range` |
+| Hashline rejection | `read_tagged` + `edit_tagged` |
+| Create file | `write` |
+| Delete / rename / test | `bash` |
 
-詳しくは [`docs/recommended-edit-policy.md`](docs/recommended-edit-policy.md) を参照してください。
+See [Recommended edit policy](docs/recommended-edit-policy.md).
 
 ## Tools
 
 ### `read_tagged`
 
-行ごとに tag を付けて読みます。
+Reads lines with validation tags.
 
 ```text
 10:Q8fA const count = 10;
@@ -46,7 +48,7 @@ built-in `edit` は入れません。
 
 ### `edit_tagged`
 
-tag と行番号で whole-line edit を行います。
+Applies whole-line edits using line numbers and tags.
 
 ```json
 {
@@ -57,7 +59,7 @@ tag と行番号で whole-line edit を行います。
 }
 ```
 
-複数行も指定できます。
+Multi-line edits are supported.
 
 ```json
 {
@@ -70,18 +72,18 @@ tag と行番号で whole-line edit を行います。
 
 ### `read_hashline`
 
-hashline anchor 付きで読みます。
+Reads lines with hashline anchors.
 
 ```text
 42sr|const value = 1;
 43ab:Q8fA|}
 ```
 
-通常は `LINEhh`、危険な行は `LINEhh:tag` になります。
+Safe lines use `LINEhh`. Risky lines use `LINEhh:tag`.
 
 ### `edit_hashline_range`
 
-hashline anchor で range edit を行います。
+Applies structured range edits using hashline anchors.
 
 ```json
 {
@@ -92,26 +94,26 @@ hashline anchor で range edit を行います。
 }
 ```
 
-空文字を指定すると削除です。
+Use an empty `newText` to delete the range.
 
 ### `search_hashline`
 
-hashline anchor 付きで検索します。
+Searches with hashline anchors in the result.
 
 ### `edit_hashline_patch`
 
-oh-my-pi-style の compact patch を適用します。自然利用では `edit_hashline_range` を推奨します。
+Applies an oh-my-pi-style compact patch. Prefer `edit_hashline_range` for natural LLM use.
 
 ### `edit_codex_patch`
 
-Codex `apply_patch` 風 patch を適用します。add/delete/update file を扱いやすいです。
+Applies a Codex `apply_patch`-style patch. Useful for add/delete/update file operations.
 
-### legacy / experimental
+### Legacy and experimental tools
 
 - `read_hashline_legacy`
 - `edit_hashline_patch_legacy`
 - `edit_crc_range`
-- `edit_hashline_range_reject_once`（benchmark 専用）
+- `edit_hashline_range_reject_once` benchmark-only
 
 ## Metrics
 
@@ -120,7 +122,7 @@ export PI_TAGGED_EDIT_METRICS=/tmp/pi-edit-metrics.jsonl
 pi -e ./src/index.ts
 ```
 
-主な記録内容:
+Metrics include:
 
 - tool name
 - edited lines
@@ -129,7 +131,7 @@ pi -e ./src/index.ts
 - saved chars estimate
 - rough token estimate
 
-## Benchmark
+## Benchmarks
 
 ```bash
 npm test
@@ -138,7 +140,7 @@ npm run bench:failure
 npm run bench:product
 ```
 
-推奨 policy を試す例:
+Run the recommended policy:
 
 ```bash
 npm run bench:product -- \
@@ -148,7 +150,7 @@ npm run bench:product -- \
   --capture-session
 ```
 
-built-in `edit` と比較する例:
+Compare with built-in `edit`:
 
 ```bash
 npm run bench:product -- \
@@ -158,7 +160,7 @@ npm run bench:product -- \
   --capture-session
 ```
 
-集計:
+Summarize runs:
 
 ```bash
 npm run bench:product-summary -- \
@@ -168,7 +170,7 @@ npm run bench:product-summary -- \
 
 ## Session report skill
 
-pi session JSONL から改善レポートを生成できます。
+Generate an improvement report from pi session JSONL logs.
 
 ```bash
 node skills/pi-edit-session-report/scripts/session-report.mjs \
@@ -178,29 +180,31 @@ node skills/pi-edit-session-report/scripts/session-report.mjs \
 
 ## Documentation
 
-- [`docs/README.md`](docs/README.md) - docs index
-- [`docs/quickstart.md`](docs/quickstart.md) - quickstart
-- [`docs/recommended-edit-policy.md`](docs/recommended-edit-policy.md) - recommended policy
-- [`docs/final-evaluation-report.md`](docs/final-evaluation-report.md) - current evaluation summary
-- [`docs/archive/`](docs/archive/) - old experiment logs
+- [Documentation index](docs/README.md)
+- [Quickstart](docs/quickstart.md)
+- [Recommended edit policy](docs/recommended-edit-policy.md)
+- [Final evaluation report](docs/final-evaluation-report.md)
+- [Archive](docs/archive/)
 
 ## Current status
 
-実験的には使える段階です。
+The extension is ready for opt-in trials.
 
-ただし、built-in `edit` より常に低コストとは言えません。現時点では次の使い方を推奨します。
+It is not proven to be cheaper than built-in `edit` in every case. Use it as a policy-based replacement that trades between natural editing, stale-safety, and fallback behavior.
 
-- opt-in extension として使う
-- 通常編集は tagged
-- safety が必要な編集は hashline
-- `--capture-session` で session I/O を確認する
+Recommended stance:
+
+- Use it as an opt-in extension.
+- Use tagged edits by default.
+- Use hashline edits for safety-sensitive cases.
+- Capture session I/O for final comparisons.
 
 ## Limitations
 
-- whole-line edit が中心です
-- hash/tag は短いので collision risk はゼロではありません
-- adaptive strict hashline で既知の危険ケースは緩和しています
-- real repository での長期運用データはまだ不足しています
+- Mostly whole-line edits.
+- Short tags and hashes can collide.
+- Adaptive strict hashline mitigates known high-risk cases.
+- Long-running real-repository usage is still limited.
 
 ## License
 

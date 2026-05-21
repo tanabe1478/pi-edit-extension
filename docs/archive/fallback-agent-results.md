@@ -1,6 +1,6 @@
 # Agent-level fallback validation
 
-日本語: [日本語ドキュメント](../ja/README.md)
+Japanese docs: [Japanese documentation](../ja/README.md)
 
 ## Command
 
