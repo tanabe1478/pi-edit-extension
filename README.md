@@ -1,4 +1,4 @@
-# pi-tagged-edit-extension
+# pi-edit-extension
 
 Experimental [pi](https://pi.dev) extension for safer, policy-driven edit replacement tools. It is inspired by antirez-style checksum tags, oh-my-pi hashline anchors, and Codex-style patches, but implements its own tagged-line, adaptive hashline, and benchmark-driven hybrid policies.
 
@@ -200,7 +200,7 @@ Or add this repository to pi settings as an extension/package once you are happy
 Set `PI_TAGGED_EDIT_METRICS` to a JSONL path. Tool calls append structured records:
 
 ```bash
-export PI_TAGGED_EDIT_METRICS=/tmp/pi-tagged-edit-metrics.jsonl
+export PI_TAGGED_EDIT_METRICS=/tmp/pi-edit-metrics.jsonl
 pi -e ./src/index.ts
 ```
 

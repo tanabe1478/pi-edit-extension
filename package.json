@@ -1,5 +1,5 @@
 {
-  "name": "pi-tagged-edit-extension",
+  "name": "pi-edit-extension",
   "version": "0.1.0",
   "description": "Experimental pi extension for safer policy-driven edit replacement tools and benchmarks.",
   "type": "module",

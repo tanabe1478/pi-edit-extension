@@ -1,11 +1,11 @@
 ---
 name: pi-edit-session-report
-description: Analyze pi session JSONL logs and generate an improvement report for this pi edit extension repository. Use when asked to review pi sessions, session logs, tool usage, or generate improvement/action reports for pi-tagged-edit-extension.
+description: Analyze pi session JSONL logs and generate an improvement report for this pi edit extension repository. Use when asked to review pi sessions, session logs, tool usage, or generate improvement/action reports for pi-edit-extension.
 ---
 
 # Pi Edit Session Report
 
-Use this skill to analyze pi session JSONL logs and write a Markdown improvement report into the `pi-tagged-edit-extension` repository.
+Use this skill to analyze pi session JSONL logs and write a Markdown improvement report into the `pi-edit-extension` repository.
 
 ## What it does
 

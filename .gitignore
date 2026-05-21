@@ -23,4 +23,5 @@ id_ed25519
 
 # local files
 .DS_Store
+.pi-edit-metrics.jsonl
 .pi-tagged-edit-metrics.jsonl
