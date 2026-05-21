@@ -317,6 +317,26 @@ function summarizeToolIo(records) {
   return out;
 }
 
+function classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, diffs, metricRecords }) {
+  if (productSuccess && exact) return "success_exact";
+  if (productSuccess && !exact) return "success_product_only";
+  if (timedOut) return "timeout";
+  const stderr = res.stderr || "";
+  const stdout = res.stdout || "";
+  const combined = `${stdout}\n${stderr}`;
+  const hadRejection = metricRecords.some((m) => m.rejectedForBenchmark || m.error || m.mismatch || m.tool?.startsWith("edit_hashline"));
+  if (hadRejection && !productSuccess) return "tool_rejection_unrecovered";
+  if (res.status !== 0) {
+    if (/Tool .* failed|Error executing tool|Invalid tool|schema|parameters/i.test(combined)) return "syntax_or_tool_misuse";
+    return "pi_failed";
+  }
+  if (!checksPass) return "tests_failed";
+  if (diffs.some((d) => d.expected === "absent")) return "unexpected_file_present";
+  if (diffs.some((d) => d.actualChars === null)) return "missing_file";
+  if (!exact) return "exact_mismatch_only";
+  return "unknown";
+}
+
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
@@ -343,6 +363,7 @@ async function main() {
         const started = Date.now();
         const res = spawnSync(cmd, cmdArgs, { cwd: dir, timeout: args.timeout * 1000, encoding: "utf8", env: { ...process.env, PI_TAGGED_EDIT_METRICS: metricsPath } });
         const durationMs = Date.now() - started;
+        const timedOut = res.error?.code === "ETIMEDOUT" || res.signal === "SIGTERM";
         const check = spawnSync("npm", ["test"], { cwd: dir, timeout: 60_000, encoding: "utf8" });
         const diffs = compareFiles(dir, task.expectedFiles);
         const metricRecords = fs.existsSync(metricsPath) ? fs.readFileSync(metricsPath, "utf8").split(/\n+/).filter(Boolean).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
@@ -350,7 +371,8 @@ async function main() {
         const checksPass = check.status === 0;
         const productSuccess = res.status === 0 && checksPass;
         const toolIo = summarizeToolIo(metricRecords);
-        const record = { mode, task: task.id, trial, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
+        const outcomeCategory = classifyOutcome({ res, timedOut, exact, checksPass, productSuccess, diffs, metricRecords });
+        const record = { mode, task: task.id, trial, status: res.status, signal: res.signal, timed_out: timedOut, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, outcomeCategory, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
         results.push(record);
         await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
         console.log(JSON.stringify(record));
@@ -359,7 +381,7 @@ async function main() {
   }
   const summary = {};
   for (const r of results) {
-    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0 };
+    summary[r.mode] ??= { total: 0, success: 0, product_success: 0, exact: 0, checks_pass: 0, duration_ms: 0, toolCalls: 0, readCalls: 0, editCalls: 0, readResultChars: 0, editInputChars: 0, totalToolIoChars: 0, outcomeCategories: {} };
     summary[r.mode].total++;
     if (r.success) summary[r.mode].success++;
     if (r.product_success) summary[r.mode].product_success++;
@@ -367,6 +389,7 @@ async function main() {
     if (r.checks_pass) summary[r.mode].checks_pass++;
     summary[r.mode].duration_ms += r.duration_ms;
     for (const key of ["toolCalls", "readCalls", "editCalls", "readResultChars", "editInputChars", "totalToolIoChars"]) summary[r.mode][key] += r.toolIo?.[key] || 0;
+    summary[r.mode].outcomeCategories[r.outcomeCategory] = (summary[r.mode].outcomeCategories[r.outcomeCategory] || 0) + 1;
   }
   for (const s of Object.values(summary)) {
     s.avg_duration_ms = Math.round(s.duration_ms / s.total);
