@@ -235,7 +235,7 @@ test("formatLogLevel uppercases overrides", () => {
 ];
 
 function parseArgs(argv) {
-  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "hybrid_hashline_tagged", "codex_patch"], timeout: 240, task: null, limit: null };
+  const args = { out: path.join(ROOT, ".product-runs", new Date().toISOString().replace(/[:.]/g, "-")), modes: ["pi_edit", "tagged", "hashline_range", "hybrid_hashline_tagged", "codex_patch"], timeout: 240, task: null, limit: null, trials: 1 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--out") args.out = argv[++i];
@@ -243,6 +243,7 @@ function parseArgs(argv) {
     else if (a === "--timeout") args.timeout = Number(argv[++i]);
     else if (a === "--task") args.task = argv[++i];
     else if (a === "--limit") args.limit = Number(argv[++i]);
+    else if (a === "--trials") args.trials = Number(argv[++i]);
     else if (a === "--help") args.help = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
@@ -319,7 +320,7 @@ function summarizeToolIo(records) {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   if (args.help) {
-    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,hybrid_hashline_tagged,codex_patch] [--task ID] [--limit N] [--timeout SEC]");
+    console.log("Usage: node bench/product-runner.mjs [--out DIR] [--modes pi_edit,tagged,hashline_range,hybrid_hashline_tagged,codex_patch] [--task ID] [--limit N] [--trials N] [--timeout SEC]");
     return;
   }
   let selected = tasks;
@@ -330,27 +331,30 @@ async function main() {
   const results = [];
   for (const task of selected) {
     for (const mode of args.modes) {
-      const dir = path.join(args.out, "runs", mode, task.id);
-      await fsp.mkdir(dir, { recursive: true });
-      await writeFiles(dir, baseFiles);
-      const promptFile = path.join(dir, "prompt.md");
-      await fsp.writeFile(promptFile, promptFor(mode, task));
-      const metricsPath = path.join(dir, "metrics.jsonl");
-      const { cmd, args: cmdArgs } = commandFor(mode, promptFile);
-      const started = Date.now();
-      const res = spawnSync(cmd, cmdArgs, { cwd: dir, timeout: args.timeout * 1000, encoding: "utf8", env: { ...process.env, PI_TAGGED_EDIT_METRICS: metricsPath } });
-      const durationMs = Date.now() - started;
-      const check = spawnSync("npm", ["test"], { cwd: dir, timeout: 60_000, encoding: "utf8" });
-      const diffs = compareFiles(dir, task.expectedFiles);
-      const metricRecords = fs.existsSync(metricsPath) ? fs.readFileSync(metricsPath, "utf8").split(/\n+/).filter(Boolean).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
-      const exact = diffs.length === 0;
-      const checksPass = check.status === 0;
-      const productSuccess = res.status === 0 && checksPass;
-      const toolIo = summarizeToolIo(metricRecords);
-      const record = { mode, task: task.id, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
-      results.push(record);
-      await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
-      console.log(JSON.stringify(record));
+      for (let trial = 1; trial <= args.trials; trial++) {
+        const trialPart = args.trials > 1 ? `trial-${trial}` : "";
+        const dir = path.join(args.out, "runs", mode, task.id, trialPart);
+        await fsp.mkdir(dir, { recursive: true });
+        await writeFiles(dir, baseFiles);
+        const promptFile = path.join(dir, "prompt.md");
+        await fsp.writeFile(promptFile, promptFor(mode, task));
+        const metricsPath = path.join(dir, "metrics.jsonl");
+        const { cmd, args: cmdArgs } = commandFor(mode, promptFile);
+        const started = Date.now();
+        const res = spawnSync(cmd, cmdArgs, { cwd: dir, timeout: args.timeout * 1000, encoding: "utf8", env: { ...process.env, PI_TAGGED_EDIT_METRICS: metricsPath } });
+        const durationMs = Date.now() - started;
+        const check = spawnSync("npm", ["test"], { cwd: dir, timeout: 60_000, encoding: "utf8" });
+        const diffs = compareFiles(dir, task.expectedFiles);
+        const metricRecords = fs.existsSync(metricsPath) ? fs.readFileSync(metricsPath, "utf8").split(/\n+/).filter(Boolean).map((line) => { try { return JSON.parse(line); } catch { return null; } }).filter(Boolean) : [];
+        const exact = diffs.length === 0;
+        const checksPass = check.status === 0;
+        const productSuccess = res.status === 0 && checksPass;
+        const toolIo = summarizeToolIo(metricRecords);
+        const record = { mode, task: task.id, trial, status: res.status, signal: res.signal, duration_ms: durationMs, exact, checks_pass: checksPass, product_success: productSuccess, success: productSuccess, diffs, toolIo, stdout_tail: (res.stdout || "").split("\n").slice(-20).join("\n"), stderr_tail: (res.stderr || "").split("\n").slice(-20).join("\n"), check_tail: ((check.stdout || "") + (check.stderr || "")).split("\n").slice(-20).join("\n"), dir, toolMetrics: metricRecords };
+        results.push(record);
+        await fsp.writeFile(path.join(dir, "result.json"), JSON.stringify(record, null, 2));
+        console.log(JSON.stringify(record));
+      }
     }
   }
   const summary = {};
