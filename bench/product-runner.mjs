@@ -351,6 +351,7 @@ function promptFor(mode, task) {
   if (mode === "replace_edit_tagged") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. Use read_tagged + edit_tagged for existing-file content edits; use write/bash for file lifecycle operations.\n";
   if (mode === "replace_edit_hashline") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. Use read_hashline + edit_hashline_range for existing-file content edits; use write/bash for file lifecycle operations. Copy anchors exactly, including :tag when present.\n";
   if (mode === "replace_edit_hybrid") return common + "This mode evaluates replacing only the built-in edit tool. Built-in read/write/bash are available. Do not use built-in edit. For existing-file content edits, prefer read_hashline + edit_hashline_range. If anchors are inconvenient or an edit is rejected, fall back to read_tagged + edit_tagged. Use write/bash for file lifecycle operations.\n";
+  if (mode === "replace_edit_policy") return common + "This mode evaluates the recommended edit replacement policy. Built-in read/write/bash are available. Do not use built-in edit. For normal existing-file content edits, use read_tagged + edit_tagged. Use read_hashline + edit_hashline_range when stale safety is important, the file is large/repeated, or exact anchors matter. If a hashline edit is rejected, recover with read_tagged + edit_tagged. Use write/bash for file lifecycle operations and tests.\n";
   throw new Error(mode);
 }
 
@@ -364,6 +365,7 @@ function commandFor(mode, promptFile, sessionDir = null) {
   if (mode === "replace_edit_tagged") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_tagged,edit_tagged"] };
   if (mode === "replace_edit_hashline") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_hashline,edit_hashline_range"] };
   if (mode === "replace_edit_hybrid") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_hashline,edit_hashline_range,read_tagged,edit_tagged"] };
+  if (mode === "replace_edit_policy") return { cmd: "pi", args: [...basePi, "-e", EXT, "--tools", "read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range"] };
   throw new Error(mode);
 }
 

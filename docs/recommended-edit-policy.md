@@ -17,7 +17,13 @@ Do not treat one tool as universally best. Use a policy split:
 
 ## Practical default
 
-For near-term pi usage, the most practical default replacement policy is:
+For near-term pi usage, the most practical default replacement policy is implemented in `bench:product` as:
+
+```text
+replace_edit_policy
+```
+
+The tool set is:
 
 ```text
 read, write, bash,
