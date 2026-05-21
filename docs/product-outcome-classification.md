@@ -1,11 +1,6 @@
 # Product outcome classification
 
-## 日本語要約
-
-bench:product の outcomeCategory 分類を説明します。成功・product-only 成功・timeout・test failure などを分類します。
-
-
-`bench:product` now classifies every run with an `outcomeCategory`.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Categories
 

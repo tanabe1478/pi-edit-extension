@@ -1,11 +1,6 @@
 # Selected product repeated-trial results
 
-## 日本語要約
-
-selected product tasks を 3 trials ずつ実行した集計結果です。
-
-
-This run validates selected edit-replacement modes across a small but meaningful task set with repeated trials.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Commands
 

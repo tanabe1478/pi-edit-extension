@@ -1,17 +1,6 @@
 # Agent-level fallback validation
 
-## 日本語要約
-
-agent が hashline rejection を観測した後に tagged fallback できるか検証した結果です。
-
-
-This validation asks the model to exercise the fallback policy in an actual `pi -p` session:
-
-1. First attempt `edit_hashline_range` with an intentionally rejected payload.
-2. Observe the rejection.
-3. Fall back to `read_tagged` + `edit_tagged`.
-
-This differs from `bench:fallback`, which mechanically applies the policy without an LLM.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Command
 

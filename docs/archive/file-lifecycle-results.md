@@ -1,11 +1,6 @@
 # File lifecycle product results
 
-## 日本語要約
-
-file lifecycle task を各 mode で実行した結果です。edit 置き換えの scope 境界を確認しています。
-
-
-This validates create/delete/rename tasks added in `docs/file-lifecycle-tasks.md`.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Commands
 

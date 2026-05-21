@@ -1,11 +1,6 @@
 # Remaining validation plan
 
-## 日本語要約
-
-今後の検証・改善計画です。実リポジトリ検証、追加 trials、失敗分類、最終レポートなどを整理しています。
-
-
-This document breaks the remaining work into small, understandable implementation/validation steps. Each step should be committed separately with its own result notes when applicable.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Goal
 

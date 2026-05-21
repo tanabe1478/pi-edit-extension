@@ -1,21 +1,6 @@
 # Policy edit path preferences
 
-## 日本語要約
-
-task ごとに preferredEditPath を指定して tagged/hashline の使い分けを促す実験結果です。
-
-
-`bench:product` tasks can now include a preferred edit path:
-
-```js
-preferredEditPath: "hashline"
-```
-
-The prompt includes:
-
-```text
-Preferred edit path for this task: hashline. Follow this preference unless it is clearly unsuitable or rejected.
-```
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Why
 

@@ -1,17 +1,6 @@
 # Fallback stress benchmark
 
-## 日本語要約
-
-hashline reject 後に tagged fallback が機械的に成立するかを確認した deterministic stress 結果です。
-
-
-This benchmark validates the intended fallback policy mechanically:
-
-1. Try adaptive `hashline_range` first.
-2. If it rejects for safety, fall back to `tagged` using current line tags.
-3. Confirm the final edit succeeds.
-
-This is not a natural LLM-use benchmark. It isolates fallback mechanics so we can verify the policy before asking the model to learn it naturally.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Command
 

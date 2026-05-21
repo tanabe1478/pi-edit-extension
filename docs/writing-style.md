@@ -1,8 +1,6 @@
 # Writing style
 
-## 日本語要約
-
-このリポジトリのドキュメント文体ルールです。結論を先に書き、短く、箇条書きを多めにします。
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Policy
 
@@ -17,7 +15,8 @@ Write docs in a concise technical-blog style.
 - Avoid repeating benchmark history in current docs.
 - Move old one-off results to `docs/archive/`.
 - Keep command examples copy-pasteable.
-- Add `## 日本語要約` near the top of each doc.
+- Keep English docs as the primary source.
+- Add a link to `docs/ja/README.md` near the top of English docs.
 
 ## Avoid
 

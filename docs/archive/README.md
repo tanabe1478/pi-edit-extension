@@ -1,8 +1,6 @@
 # Archived experiment logs
 
-## 日本語要約
-
-このディレクトリには、過去の単発 benchmark 結果や検証ログを保存しています。現在の推奨方針は上位の docs に集約済みです。
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Purpose
 

@@ -1,11 +1,6 @@
 # Larger existing-file product tasks
 
-## 日本語要約
-
-より大きい existing-file product edit tasks を追加・検証した記録です。
-
-
-This step adds two larger existing-file product tasks to `bench:product`. These are closer to normal product edits than the tiny smoke tasks because they touch validation logic, exported config shape, client behavior, and tests.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Added tasks
 

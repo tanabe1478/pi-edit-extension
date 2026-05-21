@@ -1,17 +1,6 @@
 # Natural-use validation results
 
-## 日本語要約
-
-初期 natural-use validation の結果と free-form hashline の課題をまとめています。
-
-
-This document records natural-use validations where the model is **not** given a precomputed edit payload. It must inspect `fixture.ts`, choose the allowed tools, and construct the edit payload itself.
-
-The runner is:
-
-```bash
-npm run bench:natural -- --out <dir> --modes <modes> --limit <n> --timeout <sec>
-```
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Run: first 5 scenarios, all modes
 

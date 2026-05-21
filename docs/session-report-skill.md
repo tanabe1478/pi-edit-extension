@@ -1,15 +1,6 @@
 # Session report skill
 
-## 日本語要約
-
-pi session log からこのリポジトリ向けの改善レポートを生成する skill の使い方です。
-
-
-This repository includes a project skill for generating improvement reports from pi session JSONL logs:
-
-```text
-skills/pi-edit-session-report
-```
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Skill purpose
 

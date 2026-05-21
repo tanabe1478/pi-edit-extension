@@ -1,11 +1,6 @@
 # Recommended edit replacement policy
 
-## 日本語要約
-
-現時点で推奨する edit 置き換えポリシーを説明します。通常編集は tagged、安全性重視は hashline、ファイル lifecycle は write/bash に分担します。
-
-
-This project targets replacing pi's built-in `edit` tool only. Built-in `read`, `write`, and `bash` can remain available.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Current recommendation
 

@@ -1,17 +1,6 @@
 # Hybrid tool policy validation
 
-## 日本語要約
-
-hashline 優先 + tagged fallback の hybrid policy を product benchmark で検証した結果です。
-
-
-This validation checks a simple fallback/tool-choice policy:
-
-1. Prefer `read_hashline` + `edit_hashline_range` for line-oriented edits.
-2. If hashline anchors are inconvenient or rejected, fall back to `read_tagged` + `edit_tagged`.
-3. Do not use built-in `edit`.
-
-The goal is to see whether giving the model both compact adaptive hashline and robust tagged edits causes confusion, or whether it can still complete product-level tasks.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Runner support
 

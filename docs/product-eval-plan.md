@@ -1,20 +1,6 @@
 # Product-level and natural-use evaluation plan
 
-## 日本語要約
-
-product-level evaluation の計画です。exact match と product success を分けて評価する方針をまとめています。
-
-
-The current benchmark has two layers:
-
-1. **Clean deterministic benchmark** (`npm run bench`, `npm run bench:actual`)
-   - The edit payload is known up front.
-   - This isolates tool payload size and application behavior.
-2. **Failure/stress benchmark** (`npm run bench:failure`)
-   - Payloads are intentionally stale, colliding, or drifted.
-   - This isolates safety behavior.
-
-These are necessary, but not sufficient for saying the tool can replace `pi_edit` in normal product use.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## What is still missing
 

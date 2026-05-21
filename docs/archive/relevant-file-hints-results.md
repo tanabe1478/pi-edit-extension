@@ -1,17 +1,6 @@
 # Relevant file hints results
 
-## 日本語要約
-
-relevantFiles hint によって探索 read と session I/O が減った実験結果です。
-
-
-`bench:product` tasks now can include `relevantFiles`. The prompt includes:
-
-```text
-Likely relevant files: ... Start with these files and avoid broad repository reads unless necessary.
-```
-
-This is intended to reduce exploratory reads, especially for the recommended `replace_edit_policy` mode.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Smoke commands
 

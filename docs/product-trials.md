@@ -1,11 +1,6 @@
 # Product repeated trials
 
-## 日本語要約
-
-bench:product の repeated trials 機能を説明します。同一 task/mode を複数回実行してばらつきを確認できます。
-
-
-`bench:product` now supports repeated trials for the same task/mode combination.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## CLI
 

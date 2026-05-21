@@ -1,11 +1,6 @@
 # Session tool I/O accounting
 
-## 日本語要約
-
-pi session JSONL を使って built-in tools も含む tool I/O を計測する仕組みを説明します。
-
-
-`bench:product` can now optionally capture pi session JSONL and summarize all tool calls, including built-in tools.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Usage
 

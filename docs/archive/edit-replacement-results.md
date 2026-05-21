@@ -1,11 +1,6 @@
 # Edit replacement product results
 
-## 日本語要約
-
-edit replacement modes を小さい product suite で比較した過去結果です。
-
-
-This run evaluates the intended scope: replacing only pi's built-in `edit` tool while leaving built-in `read`, `write`, and `bash` available.
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Command
 

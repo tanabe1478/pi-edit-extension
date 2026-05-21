@@ -1,9 +1,6 @@
 # Structured hashline range tool validation
 
-## 日本語要約
-
-structured edit_hashline_range を導入した自然利用 follow-up の結果です。
-
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Motivation
 

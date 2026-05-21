@@ -1,23 +1,6 @@
 # Recommended policy mode results
 
-## 日本語要約
-
-recommended policy mode の smoke 結果です。通常 task と route task で tool path を観察しています。
-
-
-`bench:product` now includes a mode named:
-
-```text
-replace_edit_policy
-```
-
-This mode implements the recommended split policy:
-
-- normal existing-file edits: `read_tagged` + `edit_tagged`
-- safety-sensitive / large / repeated file edits: `read_hashline` + `edit_hashline_range`
-- hashline rejection fallback: `read_tagged` + `edit_tagged`
-- lifecycle/test operations: built-in `write` / `bash`
-- built-in `edit` is not available
+日本語: [日本語ドキュメント](../ja/README.md)
 
 ## Smoke commands
 

@@ -1,25 +1,6 @@
 # Tool I/O accounting
 
-## 日本語要約
-
-extension metrics に基づく tool I/O 集計の定義と caveat を説明します。
-
-
-Natural and product-level runs need a different cost metric than precomputed edit payload size.
-
-In payload-injected benchmarks, the main question is:
-
-> How many chars/tokens does the edit payload require?
-
-In natural/product runs, the model also spends tool I/O on:
-
-- reading files
-- re-reading after uncertainty
-- verification reads
-- retry attempts
-- fallback attempts
-
-Therefore `bench:product` now aggregates tool I/O from the extension metrics JSONL.
+日本語: [日本語ドキュメント](ja/README.md)
 
 ## Fields
 
