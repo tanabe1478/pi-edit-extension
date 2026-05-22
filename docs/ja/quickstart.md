@@ -7,9 +7,15 @@ English: [Quickstart](../quickstart.md)
 ## 推奨 tool policy
 
 ```bash
+./bin/pi-edit
+```
+
+明示的に書く場合は以下と同じです。
+
+```bash
 pi \
   -e ./src/index.ts \
-  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
+  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range,search_hashline
 ```
 
 replacement behavior を評価するときは built-in `edit` を入れません。

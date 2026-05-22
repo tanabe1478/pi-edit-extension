@@ -28,7 +28,7 @@ The tool set is:
 ```text
 read, write, bash,
 read_tagged, edit_tagged,
-read_hashline, edit_hashline_range
+read_hashline, edit_hashline_range, search_hashline
 ```
 
 Prompt/policy:

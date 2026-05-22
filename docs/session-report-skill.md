@@ -14,7 +14,9 @@ It reports:
 - replacement edit usage
 - tagged/hashline routing
 - broad read patterns
-- tool errors / hashline rejections
+- categorized tool errors / hashline rejections
+- hashline rejection followed by tagged fallback
+- per-session summaries
 - concrete improvement recommendations
 
 ## Direct script usage

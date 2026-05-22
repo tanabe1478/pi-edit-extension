@@ -21,6 +21,7 @@
     "bench:failure": "node bench/failure.mjs",
     "bench:fallback": "node bench/fallback.mjs",
     "bench:fallback-agent": "node bench/fallback-agent-runner.mjs",
+    "pi:edit": "bin/pi-edit",
     "scan:secrets": "gitleaks detect --source . --verbose --redact"
   },
   "keywords": ["pi", "extension", "llm", "edit", "checksum", "benchmark"],

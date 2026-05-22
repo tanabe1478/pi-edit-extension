@@ -17,9 +17,15 @@ The project is inspired by antirez-style checksum tags, oh-my-pi hashline anchor
 ## Recommended usage
 
 ```bash
+./bin/pi-edit
+```
+
+Equivalent explicit command:
+
+```bash
 pi \
   -e ./src/index.ts \
-  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
+  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range,search_hashline
 ```
 
 Do not include built-in `edit` when evaluating replacement behavior.

@@ -4,13 +4,14 @@ import * as fsp from "node:fs/promises";
 import * as path from "node:path";
 
 function parseArgs(argv) {
-  const args = { session: null, repo: process.cwd(), out: null, limit: 50 };
+  const args = { session: null, repo: process.cwd(), out: null, limit: 50, broadThreshold: 2500 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--session") args.session = argv[++i];
     else if (a === "--repo") args.repo = argv[++i];
     else if (a === "--out") args.out = argv[++i];
     else if (a === "--limit") args.limit = Number(argv[++i]);
+    else if (a === "--broad-threshold") args.broadThreshold = Number(argv[++i]);
     else if (a === "--help") args.help = true;
     else throw new Error(`Unknown arg: ${a}`);
   }
@@ -18,7 +19,7 @@ function parseArgs(argv) {
 }
 
 function usage() {
-  return `Usage: node skills/pi-edit-session-report/scripts/session-report.mjs --session <file-or-dir> [--repo .] [--out report.md] [--limit 50]`;
+  return "Usage: node skills/pi-edit-session-report/scripts/session-report.mjs --session <file-or-dir> [--repo .] [--out report.md] [--limit 50] [--broad-threshold 2500]";
 }
 
 function listJsonl(input, limit) {
@@ -41,6 +42,39 @@ function textContent(content) {
   return (content || []).map((c) => c.text || "").join("\n");
 }
 
+function mdEscape(s) {
+  return String(s ?? "").replace(/\|/g, "\\|").replace(/\n/g, "<br>");
+}
+
+function inc(obj, key, by = 1) {
+  obj[key] = (obj[key] || 0) + by;
+}
+
+function classifyError(tool, text) {
+  if (tool === "bash") {
+    if (/^pi - AI coding assistant|Usage:\n\s*pi \[options\]/i.test(text)) return "bash_pi_usage";
+    if (/Permission denied/i.test(text)) return "bash_permission_denied";
+    if (/command not found|No such file or directory/i.test(text)) return "bash_command_not_found";
+    if (/ModuleNotFoundError|Missing dependency|No module named|pip install/i.test(text)) return "bash_dependency";
+    if (/xcodebuild|SwiftCompile|Ld |BUILD FAILED|Test Suite|failed:/i.test(text)) return "bash_build_test";
+    if (/Command timed out/i.test(text)) return "bash_timeout";
+    if (/Address already in use|server exited|ThreadingHTTPServer|HTTPServer/i.test(text)) return "bash_server";
+    return "bash_other";
+  }
+  if (tool === "edit_tagged") {
+    if (/tag mismatch/i.test(text)) return "edit_tag_mismatch";
+    return "edit_tagged_error";
+  }
+  if (tool?.startsWith("edit_hashline")) {
+    if (/anchors did not match|anchor/i.test(text)) return "hashline_anchor_mismatch";
+    if (/Expected range|patch/i.test(text)) return "hashline_patch_syntax";
+    return "hashline_error";
+  }
+  if (tool === "edit") return "built_in_edit_error";
+  if (tool === "read") return "read_error";
+  return `${tool || "unknown"}_error`;
+}
+
 function emptyStats() {
   return {
     sessions: 0,
@@ -50,21 +84,119 @@ function emptyStats() {
     toolInputChars: 0,
     toolResultChars: 0,
     byTool: {},
+    bySession: [],
     errors: [],
+    errorCategories: {},
     builtInEditCalls: [],
     replacementEditCalls: [],
     broadReads: [],
+    broadReadsByPath: {},
     hashlineRejections: [],
+    hashlineFallbacks: 0,
   };
 }
 
-function ensureTool(stats, tool) {
-  stats.byTool[tool] ??= { calls: 0, results: 0, inputChars: 0, resultChars: 0, errors: 0 };
-  return stats.byTool[tool];
+function ensureTool(container, tool) {
+  container[tool] ??= { calls: 0, results: 0, inputChars: 0, resultChars: 0, errors: 0 };
+  return container[tool];
 }
 
-function analyzeSession(file, stats) {
-  const session = { file, cwd: null, timestamp: null, tools: {} };
+function recordCall(stats, session, event, tool, args) {
+  const inputChars = JSON.stringify(args || {}).length;
+  stats.toolCalls++;
+  stats.toolInputChars += inputChars;
+  const t = ensureTool(stats.byTool, tool);
+  t.calls++;
+  t.inputChars += inputChars;
+  const st = ensureTool(session.byTool, tool);
+  st.calls++;
+  st.inputChars += inputChars;
+  session.toolCalls++;
+  session.toolInputChars += inputChars;
+  session.events.push({ kind: "call", tool, args });
+
+  if (tool === "edit") {
+    const rec = { file: session.file, args };
+    stats.builtInEditCalls.push(rec);
+    session.builtInEditCalls++;
+  }
+  if (["edit_tagged", "edit_hashline_range", "edit_hashline_patch", "edit_codex_patch", "edit_crc_range"].includes(tool)) {
+    stats.replacementEditCalls.push({ file: session.file, tool, args });
+    session.replacementEditCalls++;
+  }
+}
+
+function recordResult(stats, session, tool, result, isError, threshold) {
+  const resultChars = result.length;
+  stats.toolResults++;
+  stats.toolResultChars += resultChars;
+  const t = ensureTool(stats.byTool, tool);
+  t.results++;
+  t.resultChars += resultChars;
+  const st = ensureTool(session.byTool, tool);
+  st.results++;
+  st.resultChars += resultChars;
+  session.toolResults++;
+  session.toolResultChars += resultChars;
+
+  const evt = { kind: "result", tool, isError, result: result.slice(0, 500), resultChars };
+  session.events.push(evt);
+
+  if (isError) {
+    t.errors++;
+    st.errors++;
+    const category = classifyError(tool, result);
+    const err = { file: session.file, tool, category, result: result.slice(0, 500) };
+    stats.errors.push(err);
+    session.errors.push(err);
+    inc(stats.errorCategories, category);
+    inc(session.errorCategories, category);
+    if (tool.startsWith("edit_hashline")) {
+      stats.hashlineRejections.push(err);
+      session.hashlineRejections++;
+    }
+  }
+
+  if ((tool.startsWith("read") || tool === "search_hashline") && resultChars > threshold) {
+    const rec = { file: session.file, tool, resultChars, preview: result.slice(0, 120).replace(/\n/g, "\\n") };
+    stats.broadReads.push(rec);
+    session.broadReads++;
+    inc(stats.broadReadsByPath, `${tool}`);
+  }
+}
+
+function computeFallbacks(stats, session) {
+  for (let i = 0; i < session.events.length; i++) {
+    const e = session.events[i];
+    if (!(e.kind === "result" && e.isError && e.tool.startsWith("edit_hashline"))) continue;
+    const window = session.events.slice(i + 1, i + 25).filter((x) => x.kind === "call");
+    if (window.some((x) => x.tool === "edit_tagged")) {
+      stats.hashlineFallbacks++;
+      session.hashlineFallbacks++;
+    }
+  }
+}
+
+function analyzeSession(file, stats, threshold) {
+  const session = {
+    file,
+    cwd: null,
+    timestamp: null,
+    messages: 0,
+    toolCalls: 0,
+    toolResults: 0,
+    toolInputChars: 0,
+    toolResultChars: 0,
+    byTool: {},
+    errors: [],
+    errorCategories: {},
+    builtInEditCalls: 0,
+    replacementEditCalls: 0,
+    broadReads: 0,
+    hashlineRejections: 0,
+    hashlineFallbacks: 0,
+    events: [],
+  };
   const lines = fs.readFileSync(file, "utf8").split(/\n+/).filter(Boolean);
   stats.sessions++;
   for (const line of lines) {
@@ -76,73 +208,49 @@ function analyzeSession(file, stats) {
     }
     if (rec.type !== "message" || !rec.message) continue;
     stats.messages++;
+    session.messages++;
     const msg = rec.message;
     if (msg.role === "assistant") {
       for (const c of msg.content || []) {
-        if (c.type !== "toolCall") continue;
-        const tool = c.name || "unknown";
-        const inputChars = JSON.stringify(c.arguments || {}).length;
-        stats.toolCalls++;
-        stats.toolInputChars += inputChars;
-        const t = ensureTool(stats, tool);
-        t.calls++;
-        t.inputChars += inputChars;
-        session.tools[tool] = (session.tools[tool] || 0) + 1;
-        if (tool === "edit") stats.builtInEditCalls.push({ file, args: c.arguments });
-        if (["edit_tagged", "edit_hashline_range", "edit_hashline_patch", "edit_codex_patch", "edit_crc_range"].includes(tool)) {
-          stats.replacementEditCalls.push({ file, tool, args: c.arguments });
-        }
+        if (c.type === "toolCall") recordCall(stats, session, c, c.name || "unknown", c.arguments || {});
       }
-    }
-    if (msg.role === "toolResult") {
-      const tool = msg.toolName || "unknown";
-      const result = textContent(msg.content);
-      const resultChars = result.length;
-      stats.toolResults++;
-      stats.toolResultChars += resultChars;
-      const t = ensureTool(stats, tool);
-      t.results++;
-      t.resultChars += resultChars;
-      if (msg.isError) {
-        t.errors++;
-        const err = { file, tool, result: result.slice(0, 500) };
-        stats.errors.push(err);
-        if (tool.startsWith("edit_hashline")) stats.hashlineRejections.push(err);
-      }
-      if ((tool.startsWith("read") || tool === "search_hashline") && resultChars > 2500) {
-        stats.broadReads.push({ file, tool, resultChars, preview: result.slice(0, 120).replace(/\n/g, "\\n") });
-      }
+    } else if (msg.role === "toolResult") {
+      recordResult(stats, session, msg.toolName || "unknown", textContent(msg.content), Boolean(msg.isError), threshold);
     }
   }
+  computeFallbacks(stats, session);
+  stats.bySession.push(session);
   return session;
 }
 
-function pct(n, d) { return d ? `${((n / d) * 100).toFixed(1)}%` : "-"; }
-function mdEscape(s) { return String(s).replace(/\|/g, "\\|").replace(/\n/g, "<br>"); }
-
 function buildRecommendations(stats) {
   const recs = [];
-  const editCalls = stats.builtInEditCalls.length;
-  if (editCalls > 0) recs.push(`Built-in \`edit\` appeared ${editCalls} time(s). For replacement-policy sessions, remove built-in \`edit\` from --tools or strengthen the prompt.`);
-  if (stats.broadReads.length > 0) recs.push(`Detected ${stats.broadReads.length} broad read result(s) over 2500 chars. Add/strengthen relevant-file hints or narrower search/read workflows.`);
-  if (stats.hashlineRejections.length > 0) recs.push(`Detected ${stats.hashlineRejections.length} hashline rejection/error(s). Check whether fallback to tagged occurred and improve rejection diagnostics if not.`);
-  const tagged = stats.byTool.edit_tagged?.calls || 0;
-  const hashline = stats.byTool.edit_hashline_range?.calls || 0;
-  if (hashline > tagged * 2 && stats.broadReads.length > 0) recs.push("Hashline edits dominate and broad reads are present. Consider tagged-default routing or task-level preferredEditPath only for large/safety-sensitive edits.");
-  if (tagged === 0 && hashline === 0 && stats.replacementEditCalls.length === 0) recs.push("No replacement edit calls were observed. Verify the session actually used this extension and that built-in edit was disabled.");
-  if (stats.errors.length === 0) recs.push("No tool errors were observed. Focus next on reducing session I/O and improving routing rather than error recovery.");
+  const currentBuiltIn = stats.bySession.filter((s) => s.replacementEditCalls > 0 && s.builtInEditCalls > 0).reduce((n, s) => n + s.builtInEditCalls, 0);
+  const legacyBuiltIn = stats.builtInEditCalls.length - currentBuiltIn;
+  if (currentBuiltIn > 0) recs.push(`Built-in \`edit\` appeared ${currentBuiltIn} time(s) in sessions that also used replacement tools. Omit built-in \`edit\` from --tools for replacement-policy runs.`);
+  if (legacyBuiltIn > 0) recs.push(`Built-in \`edit\` appeared ${legacyBuiltIn} time(s) in sessions without replacement edits. Treat these as legacy/baseline sessions, not current policy failures.`);
+  if (stats.broadReads.length > 0) recs.push(`Detected ${stats.broadReads.length} broad read result(s). Add relevant-file hints, use offset/limit reads, or prefer search_hashline for locating targets.`);
+  if (stats.hashlineRejections.length > 0) recs.push(`Detected ${stats.hashlineRejections.length} hashline rejection/error(s); ${stats.hashlineFallbacks} had tagged fallback within the next 25 events. Improve fallback prompts/diagnostics where fallback is missing.`);
+  if ((stats.errorCategories.bash_timeout || 0) > 0 || (stats.errorCategories.bash_server || 0) > 0) recs.push("Bash errors include timeouts/server failures. Separate build/test/server commands in reports so edit-tool issues are not mixed with environment issues.");
+  if ((stats.errorCategories.edit_tag_mismatch || 0) > 0) recs.push("Tagged tag mismatches occurred. Re-read the target lines before retrying and avoid batching stale edits across long sessions.");
+  if (stats.errors.length === 0) recs.push("No tool errors were observed. Focus next on reducing session I/O and improving routing.");
   return recs;
 }
 
-function buildReport({ files, sessions, stats }) {
+function rowsFromCounts(obj) {
+  return Object.entries(obj).sort((a, b) => b[1] - a[1]).map(([k, v]) => `| ${mdEscape(k)} | ${v} |`).join("\n") || "| - | - |";
+}
+
+function buildReport({ files, stats }) {
   const totalIo = stats.toolInputChars + stats.toolResultChars;
   const toolRows = Object.entries(stats.byTool)
     .sort((a, b) => (b[1].inputChars + b[1].resultChars) - (a[1].inputChars + a[1].resultChars))
     .map(([tool, s]) => `| ${tool} | ${s.calls} | ${s.results} | ${s.inputChars} | ${s.resultChars} | ${s.inputChars + s.resultChars} | ${s.errors} |`)
-    .join("\n");
+    .join("\n") || "| - | - | - | - | - | - | - |";
+  const sessionRows = stats.bySession.map((s) => `| ${path.basename(s.file)} | ${s.toolCalls} | ${s.toolInputChars + s.toolResultChars} | ${s.builtInEditCalls} | ${s.replacementEditCalls} | ${s.broadReads} | ${s.errors.length} | ${s.hashlineRejections} | ${s.hashlineFallbacks} |`).join("\n") || "| - | - | - | - | - | - | - | - | - |";
+  const broad = stats.broadReads.slice(0, 30).map((r) => `| ${path.basename(r.file)} | ${r.tool} | ${r.resultChars} | ${mdEscape(r.preview)} |`).join("\n") || "| - | - | - | - |";
+  const errors = stats.errors.slice(0, 30).map((e) => `| ${path.basename(e.file)} | ${e.tool} | ${e.category} | ${mdEscape(e.result)} |`).join("\n") || "| - | - | - | - |";
   const recs = buildRecommendations(stats);
-  const broad = stats.broadReads.slice(0, 20).map((r) => `| ${path.basename(r.file)} | ${r.tool} | ${r.resultChars} | ${mdEscape(r.preview)} |`).join("\n") || "| - | - | - | - |";
-  const errors = stats.errors.slice(0, 20).map((e) => `| ${path.basename(e.file)} | ${e.tool} | ${mdEscape(e.result)} |`).join("\n") || "| - | - | - |";
 
   return `# Pi edit extension session improvement report
 
@@ -166,24 +274,41 @@ ${files.map((f) => `- ${f}`).join("\n")}
 | built-in edit calls | ${stats.builtInEditCalls.length} |
 | replacement edit calls | ${stats.replacementEditCalls.length} |
 | tool errors | ${stats.errors.length} |
-| broad reads >2500 chars | ${stats.broadReads.length} |
+| broad reads > threshold | ${stats.broadReads.length} |
+| hashline rejections/errors | ${stats.hashlineRejections.length} |
+| hashline -> tagged fallbacks | ${stats.hashlineFallbacks} |
+
+## Per-session summary
+
+| session | calls | total I/O | built-in edit | replacement edits | broad reads | errors | hashline rejects | hashline->tagged fallback |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+${sessionRows}
 
 ## Tool usage
 
 | tool | calls | results | input chars | result chars | total I/O | errors |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-${toolRows || "| - | - | - | - | - | - | - |"}
+${toolRows}
+
+## Error categories
+
+| category | count |
+| --- | ---: |
+${rowsFromCounts(stats.errorCategories)}
 
 ## Extension-specific signals
 
 | signal | count |
 | --- | ---: |
 | built-in edit calls | ${stats.builtInEditCalls.length} |
+| replacement edit calls | ${stats.replacementEditCalls.length} |
 | edit_tagged calls | ${stats.byTool.edit_tagged?.calls || 0} |
 | edit_hashline_range calls | ${stats.byTool.edit_hashline_range?.calls || 0} |
 | read_tagged calls | ${stats.byTool.read_tagged?.calls || 0} |
 | read_hashline calls | ${stats.byTool.read_hashline?.calls || 0} |
+| search_hashline calls | ${stats.byTool.search_hashline?.calls || 0} |
 | hashline rejections/errors | ${stats.hashlineRejections.length} |
+| hashline -> tagged fallbacks | ${stats.hashlineFallbacks} |
 
 ## Broad reads
 
@@ -193,8 +318,8 @@ ${broad}
 
 ## Tool errors
 
-| session | tool | result |
-| --- | --- | --- |
+| session | tool | category | result |
+| --- | --- | --- | --- |
 ${errors}
 
 ## Recommendations
@@ -203,10 +328,11 @@ ${recs.map((r) => `- ${r}`).join("\n")}
 
 ## Suggested next actions
 
-- If built-in \`edit\` appears, rerun with the recommended extension policy that omits built-in \`edit\`.
-- If broad reads dominate, add relevant-file hints or use targeted search/read flows.
-- If hashline is overused for simple edits, prefer tagged by default and opt into hashline via task-level preference.
-- If hashline errors appear, inspect whether tagged fallback occurred and improve diagnostics/prompts.
+- For replacement-policy runs, omit built-in \`edit\` from --tools.
+- Add likely-relevant file hints before editing.
+- Prefer tagged edits for simple edits; opt into hashline for safety-sensitive or repeated-file edits.
+- After hashline rejection, re-read the shown area or fall back to tagged.
+- Treat bash build/test/server failures separately from edit-tool failures.
 `;
 }
 
@@ -219,11 +345,11 @@ async function main() {
   const repo = path.resolve(args.repo);
   const files = listJsonl(path.resolve(args.session), args.limit);
   const stats = emptyStats();
-  const sessions = files.map((f) => analyzeSession(f, stats));
+  for (const f of files) analyzeSession(f, stats, args.broadThreshold);
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const out = path.resolve(repo, args.out || path.join("docs", "session-improvement-reports", `session-improvement-${stamp}.md`));
   await fsp.mkdir(path.dirname(out), { recursive: true });
-  await fsp.writeFile(out, buildReport({ files, sessions, stats }));
+  await fsp.writeFile(out, buildReport({ files, stats }));
   console.log(out);
 }
 

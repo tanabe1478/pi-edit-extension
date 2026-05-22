@@ -17,9 +17,15 @@ antirez-style checksum tags、oh-my-pi hashline anchors、Codex-style patches �
 ## 推奨起動
 
 ```bash
+./bin/pi-edit
+```
+
+明示的に書く場合は以下と同じです。
+
+```bash
 pi \
   -e ./src/index.ts \
-  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range
+  --tools read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range,search_hashline
 ```
 
 replacement behavior を評価するときは built-in `edit` を含めません。
