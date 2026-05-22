@@ -12,8 +12,33 @@ while [ -L "$SOURCE" ]; do
 done
 ROOT="$(cd -P "$(dirname "$SOURCE")/.." && pwd)"
 TOOLS="read,write,bash,read_tagged,edit_tagged,read_hashline,edit_hashline_range,search_hashline"
+PACKAGE_RE='tanabe1478/pi-edit-extension|pi-edit-extension'
 
-exec pi \
-  -e "$ROOT/src/index.ts" \
-  --tools "$TOOLS" \
-  "$@"
+has_installed_pi_edit_extension() {
+  local dir settings
+  dir="$PWD"
+  while :; do
+    settings="$dir/.pi/settings.json"
+    if [ -f "$settings" ] && grep -Eq "$PACKAGE_RE" "$settings"; then
+      return 0
+    fi
+    [ "$dir" = "/" ] && break
+    dir="$(dirname "$dir")"
+  done
+
+  settings="$HOME/.pi/agent/settings.json"
+  if [ -f "$settings" ] && grep -Eq "$PACKAGE_RE" "$settings"; then
+    return 0
+  fi
+
+  return 1
+}
+
+if has_installed_pi_edit_extension; then
+  exec pi --tools "$TOOLS" "$@"
+else
+  exec pi \
+    -e "$ROOT/src/index.ts" \
+    --tools "$TOOLS" \
+    "$@"
+fi
